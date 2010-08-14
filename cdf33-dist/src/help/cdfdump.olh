@@ -1,0 +1,170 @@
+#------------------------------------------------------------------------------
+#
+#  NSSDC/CDF						CDFdump online help.
+#
+#  Version 1.1c, 21-Nov-97, Hughes STX.
+#
+#  Modification history:
+#
+#   V1.0	  ?, J Love	Original version.
+#   V1.1  23-Sep-96, J Love	CDF V2.6.
+#   V1.1a  7-Jan-97, J Love	Fixed cache qualifier.
+#   V1.1b 21-Feb-97, J Love	Removed RICE.
+#   V1.1c 21-Nov-97, J Love	Windows NT/95.
+#
+#------------------------------------------------------------------------------
+#ifos mac win
+CDFdump dumps the data contents in a CDF. It differs the output from CDFexport
+by dumping the variables one at a time.
+
+The parameters/qualifiers dialog box displayed when CDFdump is `executed'
+contains the following controls.
+
+Edit fields for...
+
+  CDF:                 The pathname of the CDF to be dumped.  At the end of
+                       this field a button labeled "Select" is present.  When
+                       selected, a standard input file dialog is displayed
+                       from which the CDF may be selected.
+
+  Output:              The pathname of the output file to which the data contents
+                       from a CDF will be written.  At the end of this field a button
+                       labeled "Select" is present.  When selected, a standard
+                       output file dialog is displayed in which the output
+                       file pathname may be specified.  If an extension is not
+                       specified in this pathname, `.txt.' is appended
+                       automatically.  If this field is left blank, the output
+                       is displayed on the screen in the "CDFdump: standard
+                       output" window.
+                       
+Check boxes for...
+
+  Use FORMAT:          Whether or not the FORMAT attribute is used when
+                       writing variable data (if the FORMAT attribute
+                       exists and an entry exists for the variable).
+
+  Dump:                How to dump the file: either metadata, data or all to
+                       to dumped.
+
+Buttons for...
+
+  Enter              Causes CDFdump to dump a CDF based on the
+                     parameters/qualifiers specified.
+
+  Help               Causes this online help to be displayed.
+
+#ifos mac
+  Quit               Causes CDFdump to terminate.  (A CDF is not
+                     dumped.)  This button is only present the
+                     first time the parameters/qualifiers dialog
+                     box is displayed.
+
+#endos
+  Cancel             Causes the parameters/qualifiers dialog box to
+                     be closed.  (A CDF is not dumped.)
+#ifos mac
+                     This button is only present after the first time the
+                     parameters/qualifiers dialog box is displayed.
+#endos
+#else
+#ifos vms
+Usage:         $ CDFDUMP [/[NO]FORMAT] [/DUMP=<option>] [/OUTPUT=<file-path>]
+                         [/VARS=<var1,var2,...varN>] [/ABOUT] [/NOHEADER] 
+                         <cdf-path>
+#endos
+#ifos unix
+Usage:         % cdfdump [-[no]format] [-dump <option>] [-output <file-path>]
+                         [-vars <var1,var2,...varN>] [-about] [-noheader] 
+                         <cdf-path>
+#endos
+#ifos dos
+Usage:         > cdfdump [-[no]format] [-dump <option>] [-output <file-path>]
+                         [-vars <var1,var2,...varN>] [-about] [-noheader] 
+                         <cdf-path>
+#endos
+
+Purpose:       CDFdump dumps the data contents in a CDF.
+
+Parameter(s):  <cdf-path>
+                  The pathname of the CDF to dump (do not enter an
+                  extension).
+
+#ifos vms
+               /[NO]FORMAT
+#else
+               -[no]format
+#endos
+                  Specifies whether or not the FORMAT attribute is used
+                  when displaying variable values (if the FORMAT attribute
+                  exists and an entry exists for the variable). The default
+                  is to use the format.
+
+#ifos vms
+               /DUMP=<option>
+#else
+               -dump <option>
+#endos
+                  Specifies how the program should produce a dump.
+                  Valid options are "all", "data", "metadata". For "all"
+                  option, the default, the output will include detailed 
+                  information about the CDF, not just only the metadata and
+                  variable data. For "data" option, variable data and 
+                  minimum information about the variable is dumped. For 
+                  "metadata" option, output only includes the global 
+                  attributes as well as the variable attributes. 
+
+#ifos vms
+               /OUTPUT=<file-path>
+#else
+               -output <file-path>
+#endos
+                  Redirects the output to a file.  The file created will
+                  be named <file-path> (if <file-path> does not have an
+                  extension, `.txt' is appended automatically).  If this
+                  qualifier is not specified, the output is displayed at
+                  the terminal. If this qualifier is entered as "source",
+                  then the source CDF pathname is used for its output 
+                  name with its extension of ".cdf" being replaced by ".txt". 
+
+#ifos vms
+               /VARS=<[var1,][var2,]...[varN]>
+#else
+               -vars <[var1,][var2,]...[varN]>
+#endos
+                  Specifies which variables in the CDF will be dumped. 
+                  If not specified, the default, all variables are dumped. 
+                  Variable names should be separated by a comma. 
+
+#ifos vms
+               /ABOUT
+#else
+               -about
+#endos
+                  Shows the library version that was used to create this tool
+                  program.
+
+#ifos vms
+               /NOHEADER
+#else
+               -noheader
+#endos
+                  Whether to show the 1-line header "Dumping cdf from ...." 
+                  from the dump output. No display if "-noheader" is specified.
+
+#ifos vms
+Example(s):    $ CDFDUMP/NOFORMAT/DUMP=DATA GISS_SOIL
+               $ CDFDUMP/OUTPUT=TEMPLATE3 CDF$SMPL:TEMPLATE3
+               $ CDFDUMP/DUMP=DATA/VARS="VAR1,VAR2" MY_SAMPLE
+#endos
+#ifos unix
+Example(s):    % cdfdump -noformat -dump data giss_soil
+               % cdfdump -output template3 ../../samples/template3
+               % cdfdump -dump data -vars "var1,var2" my_sample
+#endos
+#ifos dos
+Example(s):    > cdfdump gisswetl
+               > cdfdump -noformat -dump data a:\gisssoil
+               > cdfdump -output tplate3 ..\..\samples\tplate3
+               > cdfdump -dump data -vars "var1,var2" my_sample
+#endos
+#endos

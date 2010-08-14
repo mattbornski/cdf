@@ -1,0 +1,67 @@
+The curses-based (text-GUI) CDF tools, i.e., cdfedit and cdfexport, can't be
+built as the curses package shipped in Mac OS X (10.1.x or 10.2) 
+doesn't have the files that are required by the aforementioned tools.
+To build and install the the tools mentioned above, the following 
+steps should be taken. 
+
+1. Download a separate pre-compiled ncurses package, ncurses-macosx.tar.gz,
+   from the nssdcftp machine where the latest CDF distribution package is 
+   available (nssdcftp.gsfc.nasa.gov/standards/cdf/dist/cdf30/unix). 
+
+2. Uncompress and install the downloaded package in step 1 into the directory 
+   where you want to put it.
+
+      gunzip ncurses-macosx.tar.gz ; tar xvf ncurses-macosx.tar
+
+3. Modify the Makefile in the CDF home directory that is the place where 
+   the CDF distribution is installed.
+
+   Edit the Makefile. Locate the macosx section and modify the lines that
+   are marked with <----- as following:
+
+CURSES_mach_macosx=yes                                                <-----
+CC_mach_macosx=cc
+LD_mach_macosx=libtool
+PIC_mach_macosx=     
+COPTIONS_mach_macosx=-I/Users/cdf/cdf30-dist/ncurses/include          <-----
+COPTIONSld_mach_macosx=
+CURSESLIB_mach_macosx=-L/Users/cdf/cdf30-dist/ncurses/lib -lncurses   <-----
+
+   NOTE:
+       The above example shows that /Users/cdf/cdf30-dist is the name of 
+       the directory where the curses package is installed on your system 
+       in step 2.
+
+4. Run the "make" command (even if you had already done so):
+
+   make OS=mach ENV=macosx all
+
+   Note: Ignore those "unused definition" and "unused multiple definitions"
+         messages if they pop up during the compilation/linking step.
+
+5. If you have Mac OS 10.2, skip this section and go to step 6.
+   If you have Mac OS 10.1.x, you may need to follow the instructions
+   in this section.
+
+   Set the environment variable TERMINFO to point to the terminfo directory 
+   in the ncurses's directory. Use the following command(s) to set it up.
+ 
+   Under tcsh, enter:
+   setenv TERMINFO /Users/cdf/cdf30-dist/ncurses/share/terminfo
+
+   Under Bourne shell, enter:
+   TERMINFO=/Users/cdf/cdf30-dist/ncurses/share/terminfo
+   export TERMINFO
+
+   Under Korn, Bash, and posixSHELL shell, enter:
+   export TERMINFO=/Users/cdf/cdf30-dist/ncurses/share/terminfo
+
+   Note: While the curses man page indicates that /usr/share/terminfo 
+         will be checked if the TERMINFO is not defined, it appears that
+         that is not the case under Mac OS X 10.1. No matter where terminfo 
+         is, always define the TERMINFO variable.
+
+6. Install the (new) tools with the following command. 
+   
+     make install
+

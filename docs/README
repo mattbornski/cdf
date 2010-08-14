@@ -1,0 +1,37 @@
+1. LICENSING
+============
+Insofar as doing so does not violate existing licenses or applicable law, this product is released into the public domain.  The license shall be applied separably, which is to say, should it be found that portions of the product are not able to be released or licensed in this way, the licensing terms shall still apply to the remainder of the product.
+
+2. INSTALLING
+=============
+This product is built as a Python extension.  You will need Python in order to make use of it.  Furthermore, you may require the Python development kit and a C compiler in order to properly install it, depending on your system configuration.
+
+Example installation on an Ubuntu linux machine:
+  cd <the directory in which this README file exists>
+  sudo apt-get install python python-dev
+  sudo python setup.py install
+
+3. RUNNING
+==========
+Assuming you have configured your system as described in the installation section, you should be able to use the Python module in your own Python programs.  The Python module implements two interfaces to the same underlying code.  You should probably only use one of these interfaces in your program, as they are not guaranteed to play nice together.
+
+The "standard" interface implements the NASA Common Data Format Standard Interface routines by calling into a pre-built C library which was either distributed pre-compiled as part of this product, or built on your computer when you installed the product.  The interface is documented extensively both online and in files which should be included with the distribution.
+
+The Python implementation of the standard interface uses the following conventions:
+  - All "in" arguments to API functions are available as positional arguments in the same order as documented in the reference manual.
+  - All "in" arguments to API functions are available as keyword arguments with the same names as documented in the reference manual.
+  - The return value of API functions is considered the first "out" argument.
+  - All "out" arguments of API functions are returned as a tuple in the same order as documented in the reference manual.
+  - All arguments which are documented as C arrays should be Python lists.
+  - All arguments which are documented as char-stars should be Python strings.
+
+You might use the standard interface as follows:
++----------------------------------------------+
+#!/usr/bin/env python
+
+import cdf.standard
+
+if __name__ == '__main__':
+    (status, id) = cdf.standard.CDFcreate("foo", 2, [2, 2], \
+        cdf.standard.NETWORK_ENCODING, cdf.standard.ROW_MAJOR)
++----------------------------------------------+

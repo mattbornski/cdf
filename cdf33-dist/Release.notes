@@ -1,0 +1,129 @@
+/----------------------------/
+/  CDF V3.3.* Release Notes  /
+/----------------------------/
+
+1. Compatibility with CDF 3.2, 3.1 , 2.7.2 and Earlier Versions
+
+CDF V3.3.* is backward compatible with the previous versions of CDF, and it 
+can read CDF files that were created with CDF 3.2, 3.1 , CDF 2.7.2 or earlier.  
+If a file was created with CDF 2.7 and read and modified by CDF 3.3, the 
+resultant file will be saved in the CDF 2.7 format, not CDF 3.3.  The same 
+principle applies to files that were created with CDF 2.5 and 2.6.  CDF 
+files that are created from scratch with CDF V3.3 are compatible with all
+CDF 3.*, but not compatible (due to a 64-bit file offsets used since CDF 3.0  
+versions) with CDF 2.7.2 or earlier, and an attempt to read CDF 3.* 
+files from CDF 2.7.2 or earlier will produce an error.
+
+Users of CDF 3.1 or later versions will be able to create CDF files that 
+can be read by CDF 2.7.2 or earlier by using the CDFsetFileBackward 
+function (in C) or CDF_set_FileBackward subroutine  (in Fortran), or using 
+the CDF_FILEBACKWARD environment variable on Unix or PC, or 
+CDF$FILEBACKWARD on OpenVMS.  See Section 4.18 of the CDF C 
+Reference Manual and the CDF Fortran Reference Manual for details on how to 
+create CDF 2.7-compatible files.
+
+All features added to the previous releases are included. Refer to the release 
+notes from the previous versions to view the specific features pertaining
+to that release.
+
+2. Changes
+
+The following features have been added to CDF 3.3.*:
+
+   * Added the data validation feature, as the default, while an existing
+     CDF is opened.
+   * A new tool, cdfvalidate, is added to allow a quick data validation of
+     CDF files.  
+   * All tool programs, e.g., cdfedit, cdfexport, cdfcompare, etc., with
+     the exception of cdfconvert, are now opening CDF fils with data sanity
+     checks on.
+   * Added Linux running on PPC port. 
+   * Miscellaneous bug fixes.
+
+
+3. How to Obtain the Latest Software for V3.3.* (as V3.3.0, V3.3.1, etc)
+
+    For OpenVMS systems via anonymous FTP:
+
+        a. Go to ftp://cdaweb.gsfc.nasa.gov/pub/cdf/dist/latest-release/vms
+        b. Download README_VMS.txt, cdf33_*-dist.bck, cdf33_*-dist.fdl and 
+           RESET_BACKUP_SAVESET_FILE_ATTRIBUTES.COM 
+        c. Follow the instructions in README_VMS.txt.
+
+        The CDF Java APIs and tools are not fully tested for the
+        VMS/OpenVMS operating system, and they'll be made available at 
+        the place where the new CDF 3.3 library is located once fully 
+        tested. The new CDF 3.3 library is available now.
+
+
+    For Linux/UNIX (including Windows running Cygwin or MingW) systems 
+
+        a. Go to ftp://cdaweb.gsfc.nasa.gov/pub/cdf/dist/latest-release/unix
+        b. Browse the AAREADME.txt file first and determine which tar 
+           file suits your needs.
+
+        There are 5 gzipped tar files (i.e. cdf33_*-dist-all.tar.gz, 
+        cdf33_*-dist-cdf.tar.gz, cdf33_*-dist-java_src.tar.gz, 
+        cdf33_*-dist-java.tar.gz, and PerlCDF33.tar.gz).
+        cdf-33_*-dist-all.tar.gz contains everything CDF offers except the
+        Perl-CDF APIs.  This file is recommended for both
+        CDF novice and expert users. The two jar files, cdfjava.jar and 
+        cdfml.jar, are for people who only want to install or upgrade Java-CDF 
+        or CDFML portion of the CDF distribution. 
+
+        /***************************/
+        /*  NOTE for Ubuntu users  */
+        /***************************/
+        By default, the Ubuntu operating system doesn't come with 
+        ncurses.h that is needed to build the command-line based
+        interactive CDF tools (cdfedit and cdfexport).  If you
+        don't need these two tools (other CDF tools will still be 
+        built without ncurses.h) or don't have ncurses.h, you need 
+        to disable the "CURSES" option to "no".
+
+              OS=linux ENV=gnu all CURSES=no
+
+        You can install the ncurses header files including ncurses.h by 
+        installing the ncurses development package with the following 
+        command:
+
+              apt-get install libncurses5-dev 
+
+
+    For Macintosh OS X Version 10.2 or later
+        a. Go to ftp://cdaweb.gsfc.nasa.gov/pub/cdf/dist/latest-release/macOSx
+        b. Download the cdf33_*-setup_universal_binary.tar.gz file. Upon 
+           completion of the download, the Web browser will automatically 
+           uncompress the file and initiate the installation process.
+
+
+    For 32-bit or 64-bit Windows NT/2000/XP/Vista
+        a. Go to ftp://cdaweb.gsfc.nasa.gov/pub/cdf/dist/latest-release/w32
+        b. Download the CDF33_*-SETUP.EXE file.  Double-click the downloaded
+           file for installation.
+
+
+The CDF documents are available at ftp://cdaweb.gsfc.nasa.gov/pub/cdf/doc/cdf33 
+in Adobe Portable Document Format (PDF) files.  The documentation set consists 
+of the followings:
+
+        cdf33ug.pdf  (CDF User's Guide)
+        cdf33crm.pdf (CDF C Reference Manual)
+        cdf33frm.pdf (CDF Fortran Reference Manual)
+        cdf33prm.pdf (CDF Perl Reference Manual)
+        cdf33jrm.pdf (CDF Java Reference Manual)
+        cdf33ifd.pdf (CDF Internal Format Description)
+
+Documentation for the CDF Java APIs is also available at
+http://cdf.gsfc.nasa.gov/cdfjava_doc
+
+We have a user support office for CDF that you can contact when you need an
+assistance.  For requests, please send emails to:
+
+  Internet -- cdfsupport@listserv.gsfc.nasa.gov
+
+Please let us know (via an email to CDFSUPPORT) if you get the distribution.
+We would like to know who has the distribution so we know who to contact
+when updates are available.
+
+CDFsupport

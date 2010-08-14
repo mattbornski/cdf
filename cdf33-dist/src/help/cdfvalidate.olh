@@ -1,0 +1,113 @@
+#------------------------------------------------------------------------------
+#
+#  NSSDC/CDF					   CDFvalidate online help.
+#
+#  Version 1.0, 5-Aug-08, Perot.
+#
+#  Modification history:
+#
+#   V1.0	  M Liu 	Original version.
+#
+#------------------------------------------------------------------------------
+#ifos mac win
+CDFvalidate is used to validate the CDF file(s). It goes through the internal
+records, from the beginning of the file till the end, and performs some sanity
+checks for valid size and range. It tries to identify any compromised CDFs.
+
+Check boxes for...
+
+  validate:          To validate the file.
+
+  about:             To show the library version this program is based on.
+
+  debug:             Whether or not the error message showing where the 
+                     failed validation occurs.
+
+Buttons for...
+
+  Enter              Causes CDFvalidate to validate the CDF 
+                     based on the parameters/qualifiers specified.
+
+  Help               Causes this online help to be displayed.
+
+#ifos mac
+  Quit               Causes CDFvalidate to terminate.  
+
+#endos
+  Cancel             Causes the parameters/qualifiers dialog box to be
+                     closed.  
+#ifos mac
+                     This button is only present after the first time the
+                     parameters/qualifiers dialog box is displayed.
+#endos
+#else
+#ifos vms
+Usage:         $ CDFVALIDATE [/ABOUT] [/DEBUG] [/[NO]VALIDATE] 
+                             <CDF-SPEC1> <CDF-SPEC2> ...
+#endos
+#ifos unix
+Usage:         % cdfvalidate [-about] [-debug] [-[no]validate] 
+                             <cdf-spec1> <cdf-spec2> ...
+#endos
+#ifos dos
+Usage:         > cdfvalidate [-about] [-debug] [-[no]validate] 
+                             <cdf-spec1> <cdf-spec2> ...
+#endos
+
+Purpose:       CDFvalidate will open a CDF file(s) and perform certain 
+               sanity checks for data fields to ensure the file(s) is not 
+               corrupted.  The data validations mostly are for range checks
+               and value verifications, if possible. It also tries to ensure 
+               that the internal file structures's linked lists are clear 
+               of short circuits. However, this validation still can't ensure 
+               a CDF to be 100% compromise-free as many fields in a CDF, e.g.,
+               variable data, can not be validated. The checksum option can 
+               be used to help secure the data integrity. Nothing is 
+               displayed if a CDF file passes the validation. 
+
+Parameter(s):  <cdf-spec1> <cdf_spec2> ...
+                  The CDF(s) that will be validated.
+
+#ifos vms
+Qualifier(s):  /ABOUT
+#else
+Qualifier(s):  -about
+#endos
+                  Causes the version of the CDF distribution to
+                  be displayed. 
+
+#ifos vms
+               /[NO]VALIDATE
+#else
+               -[no]validate
+#endos
+                  Specifies whether or not the CDF file(s) is to be
+                  validated, no matter whether the environment variable 
+                  CDF_VALIDATE on Unix or Windows, or CDF$VALIDATE on OpenVMS
+                  is set. The default is "-validate". The "novalidate" option
+                  is for performing a simple file opening checkout but 
+                  bypassing the data validation.
+
+#ifos vms
+               /DEBUG
+#else
+               -debug
+#endos
+                  Specifies whether or not to turn on the verbose mode while 
+                  the data validating is ongoing. If the mode is on, it will
+                  show where/why the file fails the validation. This option 
+                  is applicable only when "-validate" option is on. 
+
+#ifos vms
+Example(s):    $ CDFVALIDATE TEST
+               $ CDFVALIDATE /DEBUG TEST.CDF
+#endos
+#ifos unix
+Example(s):    % cdfvalidate test 
+               % cdfvalidate -debug test.cdf
+#endos
+#ifos dos
+Example(s):    > cdfvalidate test
+               > cdfvalidate -debug test.cdf
+#endos
+#endos

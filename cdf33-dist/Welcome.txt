@@ -1,0 +1,10 @@
+This is the latest CDF V3.3 distribution package that contains everything 
+CDF offers except for the CDF Perl APIs, and it contains the following 
+items:
+ 
+  - CDF C, Fortran, and Java APIs 
+  - C and Java version of the CDF tools.  
+
+If you have any questions or comments, please send an email to 
+cdfsupport@listserv.gsfc.nasa.gov.
+

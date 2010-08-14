@@ -1,0 +1,48 @@
+This is the CDF V3.2 online software distribution directory for Unix
+systems.  This directory contains the following files:
+
+Welcome.txt       The welcome information for the current version.
+
+CDF_copyright.txt The copyright information from CDF.
+
+CHANGES.txt       The software change log for the current CDF version.
+
+Makefile          Make file for various Unix platforms.  Type "make" for
+                  installation instructions for the supported Unix platforms. 
+                  This makefile builds the CDF library and the command line
+                  version of the CDF tools.
+
+                  This makefile utilizes the following files:
+                     - Help.all
+                     - Help.install
+                     - Help.test
+                     - Note.1st
+                     - Note.noCC
+                     - Note.solaris
+                     - Note.macosx
+                     - Note.MacX
+
+README.after_install    This is the file your are browsing.
+
+README.install    CDF library installation instructions.
+
+README.install_java_APIs    Instructions on how to build and use the Java 
+                            Native Interface (JNI) to CDF library. 
+
+Release.notes     CDF 3.2 release notes.
+
+cdfjava           This directory contains the CDF Java APIs, the JNI code,
+                  and example programs that demonstrate how to create
+                  a CDF file and read data from it. It also contains the CDF 
+                  XML utilities. 
+
+                  NOTE: This directory will only exist if the CDF Java APIs
+                        are installed.
+ 
+samples           This directory contains sample CDF files and programs 
+                  written in C. 
+ 
+src               This directory contains the CDF source code and some test
+                  programs that can be used to check whether the CDF
+                  library is properly installed.
+
