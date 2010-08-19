@@ -1,7 +1,7 @@
 # Stock python modules
 
 # cdf extension modules
-from .. import internal
+import internal
 
 # The principal advantage of having an object representing an entry is that
 # it encapsulates the storage of the data along with the typing of the
@@ -19,7 +19,7 @@ class entry:
                 value = value[0]
         self._value = value
         self._numElements = 1
-        if isinstance(self._value, str):
+        if isinstance(self._value, str) or isinstance(self._value, unicode):
             self._cdfType = internal.CDF_CHAR
             self._numElements = len(self._value)
         elif isinstance(self._value, int):

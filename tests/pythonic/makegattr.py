@@ -4,24 +4,23 @@ import os
 import sys
 import tempfile
 
-import cdf.pythonic
+import cdf
 
 def test():
     dir = tempfile.mkdtemp()
     last = os.getcwd()
     os.chdir(dir)
 
-    a = cdf.pythonic.archive('a')
+    a = cdf.archive('a')
     a['foo'] = [1, 2, 3]
-    a.attr['varname'] = 'foo'
-    a.save()
-    del a
+    a.attributes['varname'] = 'foo'
+    a.save('a')
 
     os.chdir(last)
 
-    b = cdf.pythonic.archive(os.path.abspath(os.path.join(dir, 'a')))
-    if 'varname' in b.attr:
-        name = b.attr['varname']
+    b = cdf.archive(os.path.abspath(os.path.join(dir, 'a')))
+    if 'varname' in b.attributes:
+        name = b.attributes['varname'][0]
         if name in b:
             if len(b[name]) == 3:
                 if b[name][0] == 1:

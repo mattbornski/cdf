@@ -4,21 +4,20 @@ import os
 import sys
 import tempfile
 
-import cdf.pythonic
+import cdf
 
 def test():
     dir = tempfile.mkdtemp()
     last = os.getcwd()
     os.chdir(dir)
 
-    a = cdf.pythonic.archive('a')
-    a['foo'] = cdf.pythonic.rVariable([1, 2, 3])
-    a.save()
-    del a
+    a = cdf.archive('a')
+    a['foo'] = cdf.rVariable([1, 2, 3])
+    a.save('a')
 
     os.chdir(last)
 
-    b = cdf.pythonic.archive(os.path.abspath(os.path.join(dir, 'a')))
+    b = cdf.archive(os.path.abspath(os.path.join(dir, 'a')))
     if 'foo' in b:
         if len(b['foo']) == 3:
             if b['foo'][0] == 1:

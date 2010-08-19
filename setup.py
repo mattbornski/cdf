@@ -79,9 +79,9 @@ if __name__ == '__main__':
     # do than a C extension module because Python has a lot more
     # insight into the workings of Python than it does C.
     pythonic = [
-      'cdf.pythonic.interface',
-      'cdf.pythonic.attribute',
-      'cdf.pythonic.entry']
+      'cdf.interface',
+      'cdf.attribute',
+      'cdf.entry']
 
     # Define another Python extension
     standard = ['cdf.standard']
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     # on this system.
     distutils.core.setup(
       name = 'CDF',
-      version = '0.12',
+      version = '0.20',
       description = 'This package handles files in NASA Common Data Format',
       author = 'Matt Born',
       author_email = 'mattborn@ssl.berkeley.edu',

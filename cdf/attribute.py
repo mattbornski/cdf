@@ -1,9 +1,8 @@
 # Stock python modules.
 import weakref
-import xml.dom.minidom
 
 # cdf extension modules.
-from .. import internal
+import internal
 import entry
 
 class attribute:
@@ -33,11 +32,6 @@ class attribute:
         pass
     def _write(self):
         pass
-    def to_element(self):
-        dom = xml.dom.minidom.Document()
-        root = dom.createElement('attribute')
-        root.setAttribute('name', 'unknown')
-        return root
 
 class gAttribute(attribute, list):
     _tokens = {

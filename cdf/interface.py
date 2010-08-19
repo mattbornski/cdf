@@ -3,13 +3,12 @@ import copy
 import os
 import time
 import weakref
-import xml.dom.minidom
 
 # Third-party modules.
 import numpy
 
 # cdf extension modules.
-from .. import internal
+import internal
 import attribute
 
 
@@ -35,20 +34,8 @@ class primitive:
         pass
     def from_binary(self, *args, **kwargs):
         pass
-    def from_element(self):
-        pass
-    def from_xml(self):
-        pass
     def to_binary(self, *args, **kwargs):
         pass
-    def to_element(self):
-        return None
-    def to_xml(self):
-        element = self.to_element()
-        if element is not None:
-            return element.to_xml()
-        else:
-            return ''
 
 # TODO Develop a numpy dtype that properly encodes the complexities and
 # precision of CDF EPOCH and EPOCH16 types.
@@ -221,21 +208,6 @@ class record(numpy.ndarray):
                 yield None
             else:
                 yield index
-    def to_element(self):
-        raise TypeError
-        dom = xml.dom.minidom.Document()
-        root = dom.createElement('record')
-        root.setAttribute('recNum', str(self._num))
-        string = ''
-#        for (index, value) in numpy.ndenumerate(self):
-        for index in self.indices():
-            value = self[index]
-            if len(string) is not 0:
-                string += ' '
-            string += str(value)
-        text = dom.createTextNode(string)
-        root.appendChild(text)
-        return root
 
 class variable(list):
     def __init__(self, value = None, archive = None, num = None):
@@ -477,21 +449,6 @@ class variable(list):
                 return False
             else:
                 return self._set(coerce)
-    def to_element(self):
-        dom = xml.dom.minidom.Document()
-        root = dom.createElement('variable')
-        root.setAttribute('name', 'unknown')
-        for property in self.properties.values():
-            root.appendChild(property.to_element())
-        section = dom.createElement('cdfVAttributes')
-        for attribute in self.attributes:
-            section.appendChild(attribute.to_element())
-        root.appendChild(section)
-        section = dom.createElement('cdfVarData')
-        for record in self:
-            section.appendChild(record.to_element())
-        root.appendChild(section)
-        return root
 
 # The rVariable is not the preferred variable.  rVariables suffer from
 # copious restrictions, most notably the requirement for all rVariables
@@ -653,55 +610,41 @@ class archive(dict):
         if name is not None:
             self._open(name)
 
-    def to_xml(self):
-        dom = xml.dom.minidom.Document()
-        root = dom.createElement('CDF')
-        root.setAttribute('xmlns', 'http://cdf.gsfc.nasa.gov')
-        root.setAttribute('name', self._filenames[-1])
-        dom.appendChild(root)
-        for property in self.properties.values():
-            root.appendChild(property.to_element())
-        section = dom.createElement('cdfGAttributes')
-        for attribute in self.attributes.values():
-            section.appendChild(attribute.to_element())
-        root.appendChild(section)
-        for variable in self.values():
-            root.appendChild(variable.to_element())
-        return dom.toxml()
-    def __repr__(self):
-        return self.to_xml()
-
     # Selection closure
     class selection:
-        def __init__(self, archive, filename):
+        def __init__(self, archive, filename, create = True):
             self._archive = archive
             self._filename = filename
             self._id = None
+            self._create = create
         def __enter__(self):
             # Stage one: access or create file on disk.
             id = None
-            if not os.path.exists(self._filename):
-                # Default options
-                self._archive._encoding = internal.NETWORK_ENCODING
-                self._archive._majority = internal.ROW_MAJOR
-                self._archive._format = internal.SINGLE_FILE
-                dimSizes = []
-                if self._archive._dimSizes is not None:
-                    dimSizes = self._archive._dimSizes
-                # Implicit selection
-                (id, ) = internal.CDFlib(
-                    internal.CREATE_,
-                        internal.CDF_,
-                            os.path.splitext(self._filename)[0],
-                            len(dimSizes),
-                            (dimSizes if dimSizes is not [] else [0]))
-                # Set some basic properties of the file
-                internal.CDFlib(
-                    internal.PUT_,
-                        internal.CDF_FORMAT_, self._archive._format,
-                        internal.CDF_MAJORITY_, self._archive._majority,
-                        internal.CDF_ENCODING_, self._archive._encoding)
-            else:
+            if self._create:
+                try:
+                    # Default options
+                    self._archive._encoding = internal.NETWORK_ENCODING
+                    self._archive._majority = internal.ROW_MAJOR
+                    self._archive._format = internal.SINGLE_FILE
+                    dimSizes = []
+                    if self._archive._dimSizes is not None:
+                        dimSizes = self._archive._dimSizes
+                    # Implicit selection
+                    (id, ) = internal.CDFlib(
+                        internal.CREATE_,
+                            internal.CDF_,
+                                os.path.splitext(self._filename)[0],
+                                len(dimSizes),
+                                (dimSizes if dimSizes is not [] else [0]))
+                    # Set some basic properties of the file
+                    internal.CDFlib(
+                        internal.PUT_,
+                            internal.CDF_FORMAT_, self._archive._format,
+                            internal.CDF_MAJORITY_, self._archive._majority,
+                            internal.CDF_ENCODING_, self._archive._encoding)
+                except internal.error:
+                    pass
+            if id is None:
                 # Open CDF
                 try:
                     # Implicit selection
@@ -812,27 +755,30 @@ class archive(dict):
     # I'll attempt to adapt it going forward when problems crop up,
     # but right now this is the best I've got.
     def _open(self, filename):
-        # Canonicalize the name.  The CDF library doesn't actually
-        # like seeing .cdf file extensions, but for everybody else,
-        # they're quite useful.
-        (name, ext) = os.path.splitext(filename)
-        filename = name + '.cdf'
+        if filename in self._filenames:
+            self._filenames.remove(filename)
+        self._filenames.append(filename)
         # Select the archive so that all the attributes and variables
         # have the prerequisite state required to read in their own
         # information.
-        with self.selection(self, filename) as selection:
+        with self.selection(self, filename, create = False) as selection:
             if selection:
                 self.attributes.read()
                 self._indexVariables()
-                self._filenames.append(filename)
                 return True
             else:
                 return False
     # Flush to disk
     def save(self, filename = None):
-        if filename is not None:
+        if filename is None:
             if len(self._filenames) > 0:
                 filename = self._filenames[-1]
+            else:
+                raise ValueError('No filename specified and none can be inferred.')
+        else:
+            if filename in self._filenames:
+                self._filenames.remove(filename)
+            self._filenames.append(filename)
         with self.selection(self, filename) as selection:
             # If there have been things removed from the archive then we
             # need to remove them on disk.  Order matters here, because
