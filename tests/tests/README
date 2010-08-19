@@ -1,0 +1,6 @@
+Automated tests designed to be run by the "validate" script.
+The two-tiered "tests" directory is important because the script tries to
+help out by adding the parent directory of "tests" to the PYTHONPATH
+environment variable, which actually doesn't help us at all if we add the
+directory of the unbuilt extension, and causes lots of spurious failures due
+to namespace conflicts.

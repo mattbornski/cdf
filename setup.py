@@ -115,7 +115,7 @@ if __name__ == '__main__':
     distutils.core.setup(
       name = 'CDF',
       version = '0.12',
-      description = 'This package handles files in Common Data Format',
+      description = 'This package handles files in NASA Common Data Format',
       author = 'Matt Born',
       author_email = 'mattborn@ssl.berkeley.edu',
       url = 'http://efw.ssl.berkeley.edu/packages/cdf',

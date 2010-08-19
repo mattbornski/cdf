@@ -13,7 +13,6 @@ Contents:
 
    intro
    tutorial
-   for people who have worked with CDF before
 
 Indices and tables
 ==================
