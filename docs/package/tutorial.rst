@@ -1,5 +1,5 @@
 CDF - a quick tutorial
-====================
+======================
 
 >>> import cdf
 >>> test = cdf.archive()

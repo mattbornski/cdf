@@ -1,5 +1,5 @@
 CDF - an introduction
-====================
+=====================
 
 CDF is an acronym which refers to both the Common Data Format (as
 defined and maintained by NASA GSFC) and this Python package.

@@ -1,5 +1,6 @@
 .svn
 build
+_build
 dist
 MANIFEST
 *.pyc
