@@ -45,8 +45,12 @@ if __name__ == '__main__':
     # be different than the copyright applied to the CDF library.
     # It is your responsibility to ensure that you are in compliance
     # with copyright law.
-    cdf33_distribution_sources = glob.glob('cdf33-dist/src/lib/*.c')
-    cdf33_distribution_sources.remove('cdf33-dist/src/lib/libmain.c')
+    cdf33_distribution_sources = glob.glob(
+      os.path.join('cdf33-dist',
+        os.path.join('src', os.path.join('lib', '*.c'))))
+    cdf33_distribution_sources.remove(
+      os.path.join('cdf33-dist',
+        os.path.join('src', os.path.join('lib', 'libmain.c'))))
     # End of NASA GSFC CDF library source files.
 
     # Define a C extension.
@@ -120,9 +124,8 @@ if __name__ == '__main__':
       author_email = 'mattborn@ssl.berkeley.edu',
       url = 'http://efw.ssl.berkeley.edu/packages/cdf',
       classifiers = [
-        'Development Status :: 2 - Pre-Alpha', 
+        'Development Status :: 4 - Beta', 
         'Intended Audience :: Science/Research',
-        'License :: Public Domain',
         'Topic :: Scientific/Engineering :: Astronomy'],
       ext_modules = [internal],
       py_modules = standard + pythonic,
