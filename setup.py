@@ -54,7 +54,7 @@ if __name__ == '__main__':
     # End of NASA GSFC CDF library source files.
 
     # Define a C extension.
-    internal = distutils.core.Extension(
+    internal = [distutils.core.Extension(
       'cdf.internal',
       sources = [
         # The core code for the Python extension
@@ -77,7 +77,7 @@ if __name__ == '__main__':
         '-DMALLOC_CHECK_=0',
       ],
       libraries = ['m'],
-    )
+    )]
 
     # Define a Python extension module.  This is a lot easier to
     # do than a C extension module because Python has a lot more
@@ -85,10 +85,19 @@ if __name__ == '__main__':
     pythonic = [
       'cdf.interface',
       'cdf.attribute',
-      'cdf.entry']
+      'cdf.entry',
+    ]
 
-    # Define another Python extension
+    # Define another Python extension.  This represents the "standard"
+    # interface as described in the docs.
     standard = ['cdf.standard']
+
+    # Define another Python extension.  This extension validates ISTP
+    # compliance and fills in ISTP attributes based on "skeleton files".
+    # Presently, my "skeleton files" are just Python dictionaries.  It
+    # would be a great TODO to make this operate from existing CDF
+    # skeletons, too.
+    istp = ['cdf.istp.interface']
 
     data_dir = os.path.expanduser('~/cdf/')
     data_files = [
@@ -127,8 +136,8 @@ if __name__ == '__main__':
         'Development Status :: 4 - Beta', 
         'Intended Audience :: Science/Research',
         'Topic :: Scientific/Engineering :: Astronomy'],
-      ext_modules = [internal],
-      py_modules = standard + pythonic,
+      ext_modules = internal,
+      py_modules = standard + pythonic + istp,
       requires = ['numpy (>=1.4)'],
 #        # Include some non-source files.  These files are for reference,
 #        # and will not be compiled.
