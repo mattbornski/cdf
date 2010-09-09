@@ -780,42 +780,44 @@ class archive(dict):
                 self._filenames.remove(filename)
             self._filenames.append(filename)
         with self.selection(self, filename) as selection:
-            # If there have been things removed from the archive then we
-            # need to remove them on disk.  Order matters here, because
-            # we must refer to the variables by number, and the act of
-            # removing a variable causes the renumbering of all subsequent
-            # variables.  To avoid unnecessary pain and suffering, we'll
-            # remove variables in reverse number order, highest to lowest.
-            self._rVariableDeletionNumbers.sort()
-            self._rVariableDeletionNumbers.reverse()
-            for num in self._rVariableDeletionNumbers:
-                internal.CDFlib(
-                    internal.SELECT_,
-                        internal.rVAR_, num,
-                    internal.DELETE_,
-                        internal.rVAR_)
-            self._rVariableDeletionList = []
-            self._zVariableDeletionNumbers.sort()
-            self._zVariableDeletionNumbers.reverse()
-            for num in self._zVariableDeletionNumbers:
-                internal.CDFlib(
-                    internal.SELECT_,
-                        internal.zVAR_, num,
-                    internal.DELETE_,
-                        internal.zVAR_)
-            self._zVariableDeletionList = []
+            self._save()
+    def _save(self):
+        # If there have been things removed from the archive then we
+        # need to remove them on disk.  Order matters here, because
+        # we must refer to the variables by number, and the act of
+        # removing a variable causes the renumbering of all subsequent
+        # variables.  To avoid unnecessary pain and suffering, we'll
+        # remove variables in reverse number order, highest to lowest.
+        self._rVariableDeletionNumbers.sort()
+        self._rVariableDeletionNumbers.reverse()
+        for num in self._rVariableDeletionNumbers:
+            internal.CDFlib(
+                internal.SELECT_,
+                    internal.rVAR_, num,
+                internal.DELETE_,
+                    internal.rVAR_)
+        self._rVariableDeletionList = []
+        self._zVariableDeletionNumbers.sort()
+        self._zVariableDeletionNumbers.reverse()
+        for num in self._zVariableDeletionNumbers:
+            internal.CDFlib(
+                internal.SELECT_,
+                    internal.zVAR_, num,
+                internal.DELETE_,
+                    internal.zVAR_)
+        self._zVariableDeletionList = []
 
-            # Now write all the new things added to this archive to disk.
-            # Prepare for writing variables by pre-selecting intervals for
-            # writing.
-            for name in self._variableInsertions.keys():
-                var = self._variableInsertions[name]
-                var._write(name)
-            self._variableInsertions = {}
+        # Now write all the new things added to this archive to disk.
+        # Prepare for writing variables by pre-selecting intervals for
+        # writing.
+        for name in self._variableInsertions.keys():
+            var = self._variableInsertions[name]
+            var._write(name)
+        self._variableInsertions = {}
 
-            self.attributes.write()
-            for var in self.keys():
-                self[var].attributes.write()
+        self.attributes.write()
+        for var in self.keys():
+            self[var].attributes.write()
 
     # Access data
     def _indexVariables(self):

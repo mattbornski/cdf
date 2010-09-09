@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 
-# cdf extension modules
+# Stock Python modules.
+import os
+import os.path
+import shutil
+import sys
+import tempfile
+
+# cdf extension modules.
+from .. import interface as cdf
 from .. import internal
 
 class InferenceError(Exception):
@@ -9,24 +17,107 @@ class InferenceError(Exception):
 class RedundancyError(Exception):
     pass
 
+
+
+class fillStrategy:
+    def __call__(self, archive, attribute, variable = None):
+        raise NotImplemented
+
+class userInput(fillStrategy):
+    def __call__(self, archive, attribute, variable = None):
+        if variable is not None:
+            if attribute not in archive[variable].attributes:
+                raise InferenceError
+        else:
+            if attribute not in archive.attributes:
+                raise InferenceError
+
+class defaultValue(fillStrategy):
+    def __init__(self, value):
+        self._value = value
+    def __call__(self, archive, attribute, variable = None):
+        if variable is not None:
+            if attribute not in archive[variable].attributes:
+                archive[variable].attributes[attribute] = value
+        else:
+            if attribute not in archive.attributes:
+                archive.attributes[attribute] = value
+
+class autoIncrement(fillStrategy):
+    def __init__(self, value, step = 1):
+        self._value = value
+        self._step = step
+    def __call__(self, archive, attribute, variable = None):
+        if variable is not None:
+            if attribute in archive[variable].attributes:
+                archive[variable].attributes[attribute] += self._step
+            else:
+                archive[variable].attributes[attribute] = self._value
+        else:
+            if attribute in archive.attributes:
+                archive.attributes[attribute] += self._step
+            else:
+                archive.attributes[attribute] = self._value
+
+class selectFromList(fillStrategy):
+    def __init__(self, choices, default = None):
+        self._choices = choices
+        self._default = default
+    def __call__(self, archive, attribute, variable = None):
+        if variable is not None:
+            if attribute in archive[variable].attributes:
+                archive[variable].attributes[attribute] += self._step
+            else:
+                archive[variable].attributes[attribute] = self._value
+        else:
+            if attribute in archive.attributes:
+                archive.attributes[attribute] += self._step
+            else:
+                archive.attributes[attribute] = self._value
+
+class archiveName(fillStrategy):
+    def __call__(self, archive, attribute, variable = None):
+        filename = archive._filenames[-1]
+        if variable is not None:
+            if attribute not in archive[variable].attributes:
+                archive[variable].attributes[attribute] = filename
+        else:
+            if attribute not in archive.attributes:
+                archive.attributes[attribute] = filename
+
+class primaryDataOnly(fillStrategy):
+    pass
+
+class validminStrategy(fillStrategy):
+    pass
+
+class validmaxStrategy(fillStrategy):
+    pass
+
+class varTypeStrategy(fillStrategy):
+    pass
+
+class notRequired(fillStrategy):
+    pass
+
 attributes = {
   'global':{
-    'required':[
-      'Project',
-      'Source_name',
-      'Discipline',
-      'Data_type',
-      'Descriptor',
-      'Data_version',
-      'Logical_file_id',
-      'PI_name',
-      'PI_affiliation',
-      'TEXT',
-      'Instrument_type',
-      'Mission_group',
-      'Logical_source',
-      'Logical_source_description',
-    ],
+    'required':{
+      'Project':                    userInput(),
+      'Source_name':                userInput(),
+      'Discipline':                 userInput(),
+      'Data_type':                  userInput(),
+      'Descriptor':                 userInput(),
+      'Data_version':               autoIncrement(1),
+      'Logical_file_id':            archiveName(),
+      'PI_name':                    userInput(),
+      'PI_affiliation':             userInput(),
+      'TEXT':                       userInput(),
+      'Instrument_type':            userInput(),
+      'Mission_group':              userInput(),
+      'Logical_source':             userInput(),
+      'Logical_source_description': userInput(),
+    },
     'recommended':[
       'Acknowledgement',
       'ADID_ref',
@@ -54,27 +145,27 @@ attributes = {
     # this.
     # TODO some of these variables values can be inferred reasonably well.
     # Figure out a way to encode this.
-    'required':[
-      'CATDESC',
-      'DEPEND_0',
-      'DEPEND_1',
-      'DEPEND_2',
-      'DEPEND_3',
-      'DISPLAY_TYPE',
-      'FIELDNAM',
-      'FILLVAL',
-      'FORMAT',
-      'FORM_PTR',
-      'LABLAXIS',
-      'LABL_PTR_1',
-      'LABL_PTR_2',
-      'LABL_PTR_3',
-      'UNITS',
-      'UNIT_PTR',
-      'VALIDMIN',
-      'VALIDMAX',
-      'VAR_TYPE',
-    ],
+    'required':{
+      'CATDESC':                    userInput(),
+      'DEPEND_0':                   primaryDataOnly(),
+      'DEPEND_1':                   notRequired(),
+      'DEPEND_2':                   notRequired(),
+      'DEPEND_3':                   notRequired(),
+      'DISPLAY_TYPE':               notRequired(),
+      'FIELDNAM':                   notRequired(),
+      'FILLVAL':                    notRequired(),
+      'FORMAT':                     notRequired(),
+      'FORM_PTR':                   notRequired(),
+      'LABLAXIS':                   notRequired(),
+      'LABL_PTR_1':                 notRequired(),
+      'LABL_PTR_2':                 notRequired(),
+      'LABL_PTR_3':                 notRequired(),
+      'UNITS':                      notRequired(),
+      'UNIT_PTR':                   notRequired(),
+      'VALIDMIN':                   validminStrategy(),
+      'VALIDMAX':                   validmaxStrategy(),
+      'VAR_TYPE':                   varTypeStrategy(),
+    },
     'recommended':[
       'SCALETYP',
       'SCAL_PTR',
@@ -126,21 +217,31 @@ formats = {
   internal.CDF_EPOCH16: '%s',
 }
 
-def _locate(apid):
-    # Search the system path for a file describing the attributes of
-    # the given APID.
-    # Return the skeleton structure, if found, or None if not found.
-    # TODO actually search path.
-    if str(apid) == '243':
-        import sys
-        sys.path.append('/home/mattborn/rbsp/SOC/modules/pdp/l0-l1/skeletons')
-        import apid243
-        sys.path.pop()
-        return apid243.skeleton
-    return None
+def autofill(arc, skt):
+    dir = tempfile.mkdtemp()
+    sktfile = os.path.join(dir, 'sktfile.py')
+    shutil.copy(skt, sktfile)
+    sys.path.append(dir)
+    import sktfile
+    for attr in attributes['global']['required']:
+        try:
+            if attr not in arc.attributes:
+                if attr in sktfile.skeleton[0]:
+                    arc.attributes[attr] = sktfile.skeleton[0][attr]
+                else:
+                    attributes['global']['required'][attr](arc, attr)
+            if attr not in arc.attributes:
+                raise InferenceError
+        except InferenceError:
+            raise InferenceError(attr)
+        
 
-def autofill(archive):
-    pass
-
-def autofill(variable):
-    pass
+class archive(cdf.archive):
+    def __init__(self, *args, **kwargs):
+        if 'skeleton' in kwargs:
+            self._skeleton = kwargs['skeleton']
+            del kwargs['skeleton']
+        cdf.archive.__init__(self, *args, **kwargs)
+    def _save(self):
+        autofill(self, self._skeleton)
+        cdf.archive._save(self)

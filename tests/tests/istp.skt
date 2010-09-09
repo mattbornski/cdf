@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+skeleton = (
+  # Global
+  {
+    'Data_type':        'eff',
+    # Data_version is required.  If it exists when you load an existing
+    # file as an ISTP compliant archive, it will be incremented when you
+    # save it (if changed).  If it does not exist when you save a file
+    # as ISTP compliant, it will be set to 1.
+    'Descriptor':       'l1>L1 DATA',
+    'Discipline':       [
+                          'Space Physics>Magnetospheric Science',
+                          'Space Physics>Interplanetary Studies',
+                        ],
+    'Instrument_type':  'Electric Fields (space)',
+    'Logical_source':   'tha_l1_eff',
+    'Logical_source_description':
+                        'Probe Electric Field Instrument, ' \
+                          + 'Fast Survey Waveform',
+    'Mission_group':    'THEMIS',
+    'PI_name':          'V. Angelopoulos, J. W. Bonnell, F. S. Mozer ' \
+                          + 'and R. E. Ergun',
+    'PI_affiliation':   'UCB and LASP respectively, NASA NAS5-02099',
+    'Project':          'themis',
+    'Source_name':      'tha>THEMIS Probe A',
+    'TEXT':             'Sensor and electronics design provided by UCB (' \
+                          + 'J. W. Bonnell, F. S. Mozer), Digital Fields ' \
+                          + 'Board provided by LASP (R. Ergun)',
+  },
+  # Variable, by variable name.
+  {
+    'primaryDependentData':{
+      'CATDESC':        'A series of random numbers in a constrained range.',
+      'DEPEND_0':       'independentData',
+      'DISPLAY_TYPE':   'time_series',
+      # FIELDNAM will be implicitly filled with the variable name (in this
+      # case, "gdh_size") if not specified and ISTP compliance is requested.
+      # This is probably not what you want, though, because it's supposed to
+      # be more descriptive.
+      # FILLVAL may be specified, but if it is not, a default value will
+      # (probably, depending on implementation, ) be provided which should be
+      # the ISTP-specified fill value for the given data type.
+      # FORMAT may be specified, but if it is not, a default value will
+      # be provided which will be determined by the data type.
+      # LABLAXIS may be specified, but if it is not, the implicit name of the
+      # field will be used instead (in this case, "gdh_size").
+      'UNITS':          'foos',
+      # VALIDMIN and VALIDMAX may be specified, but if they are not, a default
+      # value will (probably, depending on implmentation, ) be provided which
+      # naively correspond to the minimum representatable and maximum
+      # representable number based on the data type.
+      'VAR_TYPE':       'data',
+    },
+    'derivedDependentData':{
+      'CATDESC':        'Delta dependentData since last data point.',
+      'DEPEND_0':       'independentData',
+      'DISPLAY_TYPE':   'time_series',
+      'UNITS':          'foos',
+      'VAR_TYPE':       'data',
+    },
+    'independentData':{
+      'CATDESC':        'A monotonically increasing series of numbers.',
+      'MONOTON':        'INCREASE',
+      'UNITS':          'bars',
+      'VAR_TYPE':       'support_data',
+    },
+  }
+)
