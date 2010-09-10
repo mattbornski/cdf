@@ -13,6 +13,11 @@ import attribute
 
 
 
+# Error when a coherence restriction of the CDF format is violated.
+class CoherenceError(Exception):
+    pass
+
+
 # Closure to ensure proper selection of CDF files.
 class selection:
     def __init__(self):

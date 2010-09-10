@@ -5,7 +5,31 @@ import weakref
 import internal
 import entry
 
-class attribute:
+class uniquehashable:
+    # Typically you do not hash mutable objects.  This hash value, however,
+    # is independent of the state of this object.
+    def __hash__(self):
+        return id(self)
+    # We also override the rich comparison operators to be consistent with
+    # the uniqueness required of objects which hash uniquely.
+    def __lt__(self, other):
+        return NotImplemented
+    def __le__(self, other):
+        return NotImplemented
+    def __eq__(self, other):
+        return NotImplemented
+    def __ne__(self, other):
+        return NotImplemented
+    def __gt__(self, other):
+        return NotImplemented
+    def __ge__(self, other):
+        return NotImplemented
+    # We also override the basic comparison operator for the same reason.
+    def __cmp__(self, other):
+        return NotImplemented
+    # Done with hashing.
+
+class attribute(uniquehashable):
     def __init__(self, parent = None, num = None):
         self._parent = None
         self._num = None
@@ -16,10 +40,6 @@ class attribute:
                 self._num = num
                 self._meta()
                 self._fill()
-    # TODO Hash by an actual value.  Name would be a decent place to start
-    # in our case, but we're not aware of our name.
-    def __hash__(self):
-        return 1
     # Archive- or variable-facing methods
     def adopt(self, parent):
         if parent is not None:
@@ -108,7 +128,7 @@ class vAttribute(attribute):
     def __coerce__(self, other):
         return type(other)(self._value)
 
-class variableTable(dict):
+class variableTable(dict, uniquehashable):
     def __init__(self, variable):
         self._variable = variable
         self._invalid = {}
@@ -176,18 +196,12 @@ class variableTable(dict):
             for key in self.keys():
                 num = archive.attributes._number(key)
                 if num is not None:
-                    value = entry.entry(self[key])
-                    internal.CDFlib(
-                        internal.SELECT_,
-                            internal.ATTR_,
-                                num,
-                            self._variable._tokens['SELECT_ENTRY'],
-                                self._variable._num,
-                        internal.PUT_,
-                            self._variable._tokens['GET_ENTRY'],
-                                value._cdfType,
-                                value._numElements,
-                                self[key])
+                    value = entry.entry(self[key], simple = True)
+                    value.write(
+                      self._variable._tokens['SELECT_ENTRY'],
+                      self._variable._tokens['GET_ENTRY'],
+                      num,
+                      self._variable._num)
 
 class archiveTable(dict):
     def __init__(self, archive):
@@ -207,8 +221,6 @@ class archiveTable(dict):
         # scope attributes for given keys, but are prevented from doing so
         # by global-scope attributes of the same key.
         self._variableScopeBlockers = {}
-
-        
 
         # Track which attribute numbers are slated for deletion.  We do not
         # bother keeping tabs on any other information about the attribute
@@ -289,23 +301,17 @@ class archiveTable(dict):
                 internal.DELETE_,
                     internal.ATTR_)
         for key in self._creationKeys:
-            value = entry.entry(self[key])
-            (num, ) = internal.CDFlib(
+            (attrNum, ) = internal.CDFlib(
                 internal.CREATE_,
                     internal.ATTR_,
                         key,
                         internal.GLOBAL_SCOPE)
-            internal.CDFlib(
-                internal.SELECT_,
-                    internal.ATTR_,
-                        num,
-                    internal.gENTRY_,
-                        0,
-                internal.PUT_,
-                    internal.gENTRY_DATA_,
-                        value._cdfType,
-                        value._numElements,
-                        self[key])
+            if attrNum is not None:
+                value = entry.entry(self[key])
+                value.write(
+                  internal.gENTRY_,
+                  internal.gENTRY_DATA_,
+                  attrNum)
     def read(self):
         (numAttrs, ) = internal.CDFlib(
             internal.GET_,
