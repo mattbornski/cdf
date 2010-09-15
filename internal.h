@@ -359,7 +359,7 @@ DECLARE_CONSTANT(CDFwithSTATS_)
  * Declare functions.
  **/
 long *allocatedArrayFromOwnedPythonSequence(PyObject *list);
-PyObject *ownedPythonListFromArray(long *array, long len);
+PyObject *ownedPythonListFromArray(void *array, long len, long type);
 void **multiDimensionalArray(long *dims, long count);
 void cleanupMultiDimensionalArray(void **array, long *dims, long count);
 PyObject *ownedPythonListOfListsFromArray(void **array, long *dims, long count);
@@ -595,13 +595,13 @@ static CdfSecondTierToken cdf_internal_token_tables_GET_[] = {
     {1, CDF_COPYRIGHT_, &tokenFormat_x_s, 0, NULL},
     {1, LIB_COPYRIGHT_, &tokenFormat_x_s, 0, NULL},
     {1, DATATYPE_SIZE_, &tokenFormat_l_l, 1, NULL},
-    {1, gENTRY_DATA_, &tokenFormat_x_v, 0, &helper_GET_gENTRY_DATATYPE_},
-    {1, rENTRY_DATA_, &tokenFormat_x_v, 0, &helper_GET_rENTRY_DATATYPE_},
+    {1, gENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_gENTRY_DATATYPE_},
+    {1, rENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_rENTRY_DATATYPE_},
     {1, rVAR_DATA_, &tokenFormat_x_v, 0,& typeHelper_rVAR_},
     {1, rVAR_HYPERDATA_, &tokenFormat_x_V, 0, &typeHelper_rVAR_},
     {1, rVAR_PADVALUE_, &tokenFormat_x_v, 0, &typeHelper_rVAR_},
     {1, rVAR_SEQDATA_, &tokenFormat_x_v, 0, &typeHelper_rVAR_},
-    {1, zENTRY_DATA_, &tokenFormat_x_v, 0, &helper_GET_zENTRY_DATATYPE_},
+    {1, zENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_zENTRY_DATATYPE_},
     {1, zVAR_DATA_, &tokenFormat_x_v, 0, &typeHelper_zVAR_},
     {1, zVAR_HYPERDATA_, &tokenFormat_x_V, 0, &typeHelper_zVAR_},
     {1, zVAR_PADVALUE_, &tokenFormat_x_v, 0, &typeHelper_zVAR_},

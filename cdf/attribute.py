@@ -23,6 +23,15 @@ class attribute(framework.hashablyUniqueObject):
             self._parent = weakref.ref(parent)
         else:
             self._parent = None
+    def _canon(self, value):
+        # Turn raw values, either from the user or from the archive, into
+        # normalized entries.
+        if isinstance(value, list):
+            if len(value) == 1:
+                value = value[0]
+            else:
+                value = tuple(value)
+        return value
     def _meta(self):
         pass
     def _fill(self):
@@ -46,6 +55,7 @@ class gAttribute(attribute, list):
         list.__init__(self)
         attribute.__init__(self, archive, num)
         if value is not None:
+            value = self._canon(value)
             if instance(value, list):
                 self.extend(value)
             else:
@@ -63,14 +73,14 @@ class gAttribute(attribute, list):
                         num,
                 internal.GET_,
                     self._tokens['GET_ENTRY'])
-            self.append(value)
+            self.append(self._canon(value))
 
 class vAttribute(attribute):
     def __init__(self, value = None, variable = None, num = None):
         self._value = None
         attribute.__init__(self, variable, num)
         if value is not None:
-            self._value = value
+            self._value = self._canon(value)
     def _fill(self):
         # Note that vAttributes need not be assigned for each variable.
         # There is, however, absolutely no way to tell a priori whether
@@ -97,7 +107,7 @@ class vAttribute(attribute):
                     (value, ) = internal.CDFlib(
                         internal.GET_,
                             parent._tokens['GET_ENTRY'])
-                    self._value = value
+                    self._value = self._canon(value)
         except:
             self._value = None
     def __repr__(self):

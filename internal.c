@@ -637,13 +637,26 @@ long getSize(long type) {
 /**
  * Helper functions to calculate sizes and lengths.
  */
+/**
+ * My type convention is hacktastic.  I must communicate the type of
+ * data, as well as how many of them there are.  Because the "helper"
+ * system has evolved to return only one long, and I'm not masochistic
+ * enough to tackle that right now, I'm going to encode two bits of
+ * info in one long.  Fancy.
+ *
+ * In particular, I'm going to multiply the type by 200 and add the size.
+ * I chose 200 because it's small enough to allow all CDF data type codes
+ * to fit in a long when multiplied by it, but large enough to allow a fair
+ * size.
+ */
+#define TYPE_MOD 200L
 long typeConventionHelper(long type_token, long len_token) {
     long type = getToken(type_token);
+    long size = getToken(len_token);
     if (type == CDF_CHAR) {
-        long size = getToken(len_token);
         return -1 * size;
     } else {
-        return type;
+        return TYPE_MOD * type + size;
     }
 }
 
@@ -903,7 +916,7 @@ PyObject *tokenFormat_x_L(long one, long two, PyObject *tokens,
         if ((out_1 != NULL) || (len == 0)) {
             if (check(CDFlib(one, two, out_1, NULL_))) {
                 /* Convert long array list into Python list. */
-                PyObject *conv_1 = ownedPythonListFromArray(out_1, len);
+                PyObject *conv_1 = ownedPythonListFromArray((void *)out_1, len, CDF_INT4);
                 free(out_1);
                 return Py_BuildValue("(O)", conv_1);
             }
@@ -946,19 +959,28 @@ PyObject *tokenFormat_x_v(long one, long two, PyObject *tokens,
 PyObject *tokenFormat_x_V(long one, long two, PyObject *tokens,
     long (*helper)(PyObject *)) {
     if (helper != NULL) {
-        long len = helper(tokens);
-        long *out_1 = alloc(calloc(sizeof(long), len));
-        /* TODO Determine the type of value, instead of just using
-         * longs. */
-        if ((out_1 != NULL) || (len == 0)) {
-            if (check(CDFlib(one, two, out_1, NULL_))) {
-                /* Convert long array list into Python list. */
-                PyObject *conv_1 = ownedPythonListFromArray(out_1, len);
-                free(out_1);
-                return Py_BuildValue("(O)", conv_1);
+        long type = helper(tokens);
+        if (type < 0) {
+            return tokenFormat_x_s(one, two, tokens, helper);
+        } else {
+            long len = type % TYPE_MOD;
+            type -= len;
+            type /= TYPE_MOD;
+            if (len > 0) {
+                long size = getSize(type);
+                void *out_1 = alloc(calloc(size, len));
+                if (out_1 != NULL) {
+                    if (check(CDFlib(one, two, out_1, NULL_))) {
+                        /* Convert array into Python list. */
+                        PyObject *conv_1
+                          = ownedPythonListFromArray(out_1, len, type);
+                        free(out_1);
+                        return Py_BuildValue("(O)", conv_1);
+                    }
+                    free(out_1);
+                }
             }
         }
-        free(out_1);
     }
     return NULL;
 }
@@ -996,7 +1018,8 @@ PyObject *tokenFormat_x_lL(long one, long two, PyObject *tokens,
                 long out_1;
                 if (check(CDFlib(one, two, &out_1, out_2, NULL_))) {
                     /* Convert long array list into Python list. */
-                    PyObject *conv_2 = ownedPythonListFromArray(out_2, len);
+                    PyObject *conv_2 = ownedPythonListFromArray(
+                      (void *)out_2, len, CDF_INT4);
                     free(out_2);
                     return Py_BuildValue("(lO)", out_1, conv_2);
                 }
@@ -1428,8 +1451,9 @@ allocatedArrayFromOwnedPythonSequence(PyObject *sequence) {
 }
 
 PyObject *
-ownedPythonListFromArray(long *array, long len) {
+ownedPythonListFromArray(void *array, long len, long type) {
     if ((array != NULL) || (len == 0)) {
+        long size = getSize(type);
         long i;
         PyObject *list = PyList_New(len);
         if (list == NULL) {
@@ -1437,7 +1461,7 @@ ownedPythonListFromArray(long *array, long len) {
             return NULL;
         }
         for (i = 0; i < len; i++) {
-            PyObject *value = PyLong_FromLong(array[i]);
+            PyObject *value = castFromCdfToPython(type, array + (i * size));
             if (value != NULL) {
                 PyList_SetItem(list, i, value);
             } else {
@@ -1534,7 +1558,7 @@ ownedPythonListOfListsFromArray(void **array, long *dims, long count) {
             if (list != NULL) {
                 for (i = 0; i < dims[0]; i++) {
                     tmp = ownedPythonListOfListsFromArray(
-                        (void **)(&(array[i])), (long *)(&(dims[1])), (count - 1));
+                        (void *)(&(array[i])), (long *)(&(dims[1])), (count - 1));
                     if (tmp != NULL) {
                         PyList_SetItem(list, i, tmp);
                     } else {
@@ -1548,7 +1572,7 @@ ownedPythonListOfListsFromArray(void **array, long *dims, long count) {
                 return NULL;
             }
         } else {
-            return ownedPythonListFromArray((long *)array, dims[0]);
+            return ownedPythonListFromArray((void *)array, dims[0], CDF_INT4);
         }
     }
     printf("Not enough information to generate new Python list.\n");
