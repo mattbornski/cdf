@@ -3,33 +3,10 @@ import weakref
 
 # cdf extension modules.
 import internal
+import framework
 import entry
 
-class uniquehashable:
-    # Typically you do not hash mutable objects.  This hash value, however,
-    # is independent of the state of this object.
-    def __hash__(self):
-        return id(self)
-    # We also override the rich comparison operators to be consistent with
-    # the uniqueness required of objects which hash uniquely.
-    def __lt__(self, other):
-        return NotImplemented
-    def __le__(self, other):
-        return NotImplemented
-    def __eq__(self, other):
-        return NotImplemented
-    def __ne__(self, other):
-        return NotImplemented
-    def __gt__(self, other):
-        return NotImplemented
-    def __ge__(self, other):
-        return NotImplemented
-    # We also override the basic comparison operator for the same reason.
-    def __cmp__(self, other):
-        return NotImplemented
-    # Done with hashing.
-
-class attribute(uniquehashable):
+class attribute(framework.hashablyUniqueObject):
     def __init__(self, parent = None, num = None):
         self._parent = None
         self._num = None
@@ -128,7 +105,7 @@ class vAttribute(attribute):
     def __coerce__(self, other):
         return type(other)(self._value)
 
-class variableTable(dict, uniquehashable):
+class variableTable(framework.coerciveDictionary, framework.hashablyUniqueObject):
     def __init__(self, variable):
         self._variable = variable
         self._invalid = {}
@@ -194,16 +171,17 @@ class variableTable(dict, uniquehashable):
         archive = self._variable._archive()
         if archive is not None:
             for key in self.keys():
+                # Verify that the attribute values are coherent.
+                value = entry.entry(self[key], simple = True)
                 num = archive.attributes._number(key)
                 if num is not None:
-                    value = entry.entry(self[key], simple = True)
                     value.write(
                       self._variable._tokens['SELECT_ENTRY'],
                       self._variable._tokens['GET_ENTRY'],
                       num,
                       self._variable._num)
 
-class archiveTable(dict):
+class archiveTable(framework.coerciveDictionary):
     def __init__(self, archive):
         # Reference to the archive we are maintaining variables for.
         # Note that we use weak references to prevent reference cycles
@@ -301,13 +279,16 @@ class archiveTable(dict):
                 internal.DELETE_,
                     internal.ATTR_)
         for key in self._creationKeys:
+            # Verify that the attribute values are coherent.
+            value = entry.entry(self[key])
+            # Assign a number.
             (attrNum, ) = internal.CDFlib(
                 internal.CREATE_,
                     internal.ATTR_,
                         key,
                         internal.GLOBAL_SCOPE)
+            # Write it.
             if attrNum is not None:
-                value = entry.entry(self[key])
                 value.write(
                   internal.gENTRY_,
                   internal.gENTRY_DATA_,

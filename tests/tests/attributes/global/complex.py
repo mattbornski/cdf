@@ -17,8 +17,16 @@ def test():
     test.attributes['eight'] = (8, 8.0)
     test.attributes['nine'] = (9.0, 9)
     test.attributes['ten'] = [(10, 10), (10.0, 10.0), (10, 10.0), (10.0, 10)]
-    test.attributes['eleven'] = ('eleven', 'one teen')
-    test.save('test')
+    # Note that you can't set tuples of strings, as the numElements
+    # property of the attribute which would normally be used to indicate
+    # the tuple length is instead used for the string length.
+    try:
+        test.attributes['eleven'] = ('eleven', 'one teen')
+        test.save('test')
+    except cdf.interface.CoherenceError:
+        pass
+    else:
+        print 'no coherence error for eleven!'
 
     test2 = cdf.archive('test')
     print test2.attributes

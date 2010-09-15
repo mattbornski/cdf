@@ -3,6 +3,7 @@
 # cdf extension modules
 import interface as cdf
 import internal
+import typing
 
 # The principal advantage of having an object representing an entry is that
 # it encapsulates the storage of the data along with the typing of the
@@ -27,27 +28,36 @@ class entry:
             self._cdfType = internal.CDF_REAL8
             self._numElements = 1
         elif isinstance(value, tuple):
-            oldtype = None
+            oldType = None
             for item in value:
                 # Every item in a tuple must have the same type.
-                newtype = self._type(item)
-                if newtype[1] != 1:
+                newType = self._type(item)
+                if newType[1] != 1:
                     # Only simple types, and non-string types,
                     # inside tuples.
                     # This is a CoherenceError because the type would be
                     # okay by itself but disagrees with other types which
                     # it is implicitly tied to.
                     raise cdf.CoherenceError
-                newtype = newtype[0]
-                if oldtype is None:
-                    oldtype = newtype
-                elif oldtype != newtype:
-                    # This is a CoherenceError because the type would be
-                    # okay by itself but disagrees with other types which
-                    # it is implicitly tied to.
-                    raise cdf.CoherenceError
-            if oldtype is not None:
-                self._cdfType = oldtype
+                newType = newType[0]
+                if oldType is None:
+                    oldType = newType
+                elif oldType != newType:
+                    # In the case of type disagreement, use the more forgiving
+                    # type and size combo.
+                    # In particular, if one is signed and one is unsigned, we
+                    # must use signed.  If one is integer and one is floating
+                    # point, we must use floating point.
+                    joinedType = typing.joinCdfType(oldType, newType)
+                    if joinedType is not None:
+                        oldType = joinedType
+                    else:
+                        # This is a CoherenceError because the type would be
+                        # okay by itself but disagrees with other types which
+                        # it is implicitly tied to.
+                        raise cdf.CoherenceError
+            if oldType is not None:
+                self._cdfType = oldType
                 self._numElements = len(value)
             else:
                 # This is a ValueError because you didn't actually give

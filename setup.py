@@ -1,6 +1,15 @@
 import distutils.core
 import glob
+import os
 import os.path
+
+def data_file_candidates(path):
+    return [
+      file[0] for file in
+        [glob.glob(os.path.join(dir[0], '*')) for dir in os.walk(path)]
+      if file
+    ]
+
 
 if __name__ == '__main__':
     # List the source files from the CDF v3.3 distribution.
@@ -84,8 +93,10 @@ if __name__ == '__main__':
     # insight into the workings of Python than it does C.
     pythonic = [
       'cdf.interface',
+      'cdf.framework',
       'cdf.attribute',
       'cdf.entry',
+      'cdf.typing',
     ]
 
     # Define another Python extension.  This represents the "standard"
@@ -104,10 +115,7 @@ if __name__ == '__main__':
       # Documentation
       (os.path.join(data_dir, 'docs'), glob.glob('docs/*')),
       # Functional tests
-      (os.path.join(data_dir, 'tests/pythonic'),
-        ['tests/pythonic/makervar.py',
-        'tests/pythonic/makezvar.py',
-        'tests/pythonic/makegattr.py']),
+      (os.path.join(data_dir, 'tests'), data_file_candidates('tests')),
       # Examples
       (os.path.join(data_dir, 'examples/internal'),
         ['examples/internal/list-cdf.py',
@@ -127,7 +135,7 @@ if __name__ == '__main__':
     # on this system.
     distutils.core.setup(
       name = 'CDF',
-      version = '0.20',
+      version = '0.21',
       description = 'This package handles files in NASA Common Data Format',
       author = 'Matt Born',
       author_email = 'mattborn@ssl.berkeley.edu',

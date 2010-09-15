@@ -1,15 +1,16 @@
-# Stock python modules.
+# Stock python modules
 import copy
 import os
 import time
 import weakref
 
-# Third-party modules.
+# Third-party modules
 import numpy
 
-# cdf extension modules.
-import internal
-import attribute
+# cdf extension modules
+from . import internal
+from . import attribute
+from . import typing
 
 
 
@@ -41,47 +42,6 @@ class primitive:
         pass
     def to_binary(self, *args, **kwargs):
         pass
-
-# TODO Develop a numpy dtype that properly encodes the complexities and
-# precision of CDF EPOCH and EPOCH16 types.
-class epoch(numpy.float64):
-    pass
-
-class epoch16(epoch):
-    pass
-
-# Type conversion lookups
-_typeConversions = {
-    # NumPy to CDF
-    numpy.byte:             internal.CDF_BYTE,
-    numpy.int8:             internal.CDF_INT1,
-    numpy.int16:            internal.CDF_INT2,
-    numpy.int32:            internal.CDF_INT4,
-    numpy.int64:            internal.CDF_REAL8,
-    numpy.uint8:            internal.CDF_UINT1,
-    numpy.uint16:           internal.CDF_UINT2,
-    numpy.uint32:           internal.CDF_UINT4,
-    numpy.float32:          internal.CDF_REAL4,
-    numpy.float64:          internal.CDF_REAL8,
-    epoch:                  internal.CDF_EPOCH,
-    epoch16:                internal.CDF_EPOCH16,
-    numpy.string_:          internal.CDF_CHAR,
-    # CDF to NumPy
-    internal.CDF_BYTE:      numpy.byte,
-    internal.CDF_INT1:      numpy.int8,
-    internal.CDF_INT2:      numpy.int16,
-    internal.CDF_INT4:      numpy.int32,
-    internal.CDF_UINT1:     numpy.uint8,
-    internal.CDF_UINT2:     numpy.uint16,
-    internal.CDF_UINT4:     numpy.uint32,
-    internal.CDF_REAL4:     numpy.float32,
-    internal.CDF_REAL8:     numpy.float64,
-    internal.CDF_EPOCH:     epoch,
-    internal.CDF_EPOCH16:   epoch16,
-    internal.CDF_CHAR:      numpy.string_,
-}
-
-
 
 class record(numpy.ndarray):
     # NumPy overrides
@@ -226,7 +186,6 @@ class variable(list):
         self._numpyType = None
         # References
         self._archive = None
-        self.properties = {}
         self.attributes = attribute.variableTable(self)
         # Base class constructor
         list.__init__(self)
@@ -313,43 +272,13 @@ class variable(list):
             try:
                 # Between the type of the record and the type of the variable,
                 # accept the more inclusive type.
-                sizes = {
-                  numpy.byte:1,
-                  numpy.int8:1,
-                  numpy.int16:2,
-                  numpy.int32:4,
-                  numpy.int64:8,
-                  numpy.uint8:1,
-                  numpy.uint16:2,
-                  numpy.uint32:4,
-                  numpy.float32:4,
-                  numpy.float64:8,
-                }
-                types = {
-                  numpy.byte:0,
-                  numpy.int8:2,
-                  numpy.int16:2,
-                  numpy.int32:2,
-                  numpy.int64:2,
-                  numpy.uint8:2,
-                  numpy.uint16:1,
-                  numpy.uint32:1,
-                  numpy.float32:3,
-                  numpy.float64:3,
-                }
-                typeThenSize = [{1:numpy.byte}, {1:numpy.uint8, 2:numpy.uint16, 4:numpy.uint32}, {1:numpy.int8, 2:numpy.int16, 4:numpy.int32, 8:numpy.int64}, {4:numpy.float32, 8:numpy.float64}]
-                size1 = value.dtype.itemsize
-                size2 = sizes[self._numpyType]
-                type1 = types[value.dtype.type]
-                type2 = types[self._numpyType]
-                size = max(size1, size2)
-                type = max(type1, type2)
-                self._numpyType = typeThenSize[type][size]
+                self._numpyType \
+                  = typing.joinNumpyType(value.dtype.type, self._numpyType)
             except:
                 # If something went wrong (i.e. it was a string), use the
                 # old method
                 self._numpyType = value.dtype.type
-        self._cdfType = _typeConversions[self._numpyType]
+        self._cdfType = typing._typeConversions[self._numpyType]
         self._numElementsPerRecord = 1
         self._recVariance = internal.VARY
     def _dims(self, value):
@@ -374,7 +303,7 @@ class variable(list):
                             self._tokens['RECVARY'],
                             self._tokens['DIMVARYS'])
                 self._cdfType = type
-                self._numpyType = _typeConversions[type]
+                self._numpyType = typing._typeConversions[type]
                 self._numElementsPerRecord = elements
                 # The default numpy type obtained by simply informing it that
                 # we are dealing with strings results in truncating all read
@@ -605,7 +534,6 @@ class archive(dict):
         self._zVariableDeletionNumbers = []
         self._variableInsertions = {}
 
-        self.properties = {}
         self.attributes = attribute.archiveTable(self)
 
         # Initialize the variables in different way depending on
