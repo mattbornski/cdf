@@ -68,10 +68,10 @@ class defaultValue(fillStrategy):
     def __call__(self, archive, attr, var = None):
         if var is not None:
             if attr not in archive[var].attributes:
-                archive[var].attributes[attr] = value
+                archive[var].attributes[attr] = self._value
         else:
             if attr not in archive.attributes:
-                archive.attributes[attr] = value
+                archive.attributes[attr] = self._value
 
 class autoIncrement(fillStrategy):
     def __init__(self, value, step = 1):
