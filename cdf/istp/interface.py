@@ -345,7 +345,7 @@ attributes = {
   },
   'var':{
     'required':{
-      'CATDESC':                    userInput(),
+      'CATDESC':                    varName(),
       'DEPEND_0':                   timeSeriesStrategy(),
       'DEPEND_1':                   dimensionStrategy(1, refersToVariable()),
       'DEPEND_2':                   dimensionStrategy(2, refersToVariable()),
