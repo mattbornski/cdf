@@ -442,7 +442,8 @@ def autofill(arc, skt):
                 for attr in required:
                     try:
                         if attr not in arc[var].attributes:
-                            if attr in sktfile.skeleton[1][var]:
+                            if var in sktfile.skeleton[1] \
+                              and attr in sktfile.skeleton[1][var]:
                                 arc[var].attributes[attr] \
                                   = sktfile.skeleton[1][var][attr]
                             else:
