@@ -399,58 +399,28 @@ attributes = {
 }
 
 def autofill(arc, skt):
-    dir = tempfile.mkdtemp()
-    sktfile = os.path.join(dir, 'sktfile.py')
-    shutil.copy(skt, sktfile)
-    sys.path.append(dir)
-    import sktfile
-    required = attributes['global']['required'].keys()
-    retry = []
-    while len(required) > 0:
-        for attr in required:
-            try:
-                if attr not in arc.attributes:
-                    if attr in sktfile.skeleton[0]:
-                        arc.attributes[attr] = sktfile.skeleton[0][attr]
-                    else:
-                        attributes['global']['required'][attr](arc, attr)
-                if attr not in arc.attributes:
-                    raise InferenceError
-            except InferenceError:
-                raise InferenceError('Unable to infer value of '
-                  + 'global attr "' + str(attr) + '"')
-            except _MissingPrerequisite:
-                retry.append(attr)
-            except _NotRequired:
-                # Good enough.
-                pass
-            except _InferenceSuccessful:
-                # Perfect!
-                pass
-        if len(required) == len(retry):
-            # This pass has resolved nothing, abort.
-            raise InferenceError('Unable to infer value of '
-              + 'global attr "' + str(retry[0]) + '"')
-        required = retry
-        retry = []
-    for var in arc:
-        required = attributes['var']['required'].keys()
+    try:
+        sys.path.append(os.path.dirname(skt))
+        dir = tempfile.mkdtemp()
+        sktfile = os.path.join(dir, 'sktfile.py')
+        shutil.copy(skt, sktfile)
+        sys.path.append(dir)
+        import sktfile
+        required = attributes['global']['required'].keys()
         retry = []
         while len(required) > 0:
             for attr in required:
                 try:
-                    if attr not in arc[var].attributes:
-                        if attr in sktfile.skeleton[1][var]:
-                            arc[var].attributes[attr] \
-                              = sktfile.skeleton[1][var][attr]
+                    if attr not in arc.attributes:
+                        if attr in sktfile.skeleton[0]:
+                            arc.attributes[attr] = sktfile.skeleton[0][attr]
                         else:
-                            attributes['var']['required'][attr](
-                              arc, attr, var)
-                    if attr not in arc[var].attributes:
+                            attributes['global']['required'][attr](arc, attr)
+                    if attr not in arc.attributes:
                         raise InferenceError
                 except InferenceError:
-                    raise InferenceError('Unable to infer value of "'
-                      + str(attr) + '" for var "' + str(var) + '"')
+                    raise InferenceError('Unable to infer value of '
+                      + 'global attr "' + str(attr) + '"')
                 except _MissingPrerequisite:
                     retry.append(attr)
                 except _NotRequired:
@@ -461,11 +431,45 @@ def autofill(arc, skt):
                     pass
             if len(required) == len(retry):
                 # This pass has resolved nothing, abort.
-                raise InferenceError('Unable to infer value of "'
-                  + str(attr) + '" for var "' + str(var) + '"')
+                raise InferenceError('Unable to infer value of '
+                  + 'global attr "' + str(retry[0]) + '"')
             required = retry
             retry = []
-
+        for var in arc:
+            required = attributes['var']['required'].keys()
+            retry = []
+            while len(required) > 0:
+                for attr in required:
+                    try:
+                        if attr not in arc[var].attributes:
+                            if attr in sktfile.skeleton[1][var]:
+                                arc[var].attributes[attr] \
+                                  = sktfile.skeleton[1][var][attr]
+                            else:
+                                attributes['var']['required'][attr](
+                                  arc, attr, var)
+                        if attr not in arc[var].attributes:
+                            raise InferenceError
+                    except InferenceError:
+                        raise InferenceError('Unable to infer value of "'
+                          + str(attr) + '" for var "' + str(var) + '"')
+                    except _MissingPrerequisite:
+                        retry.append(attr)
+                    except _NotRequired:
+                        # Good enough.
+                        pass
+                    except _InferenceSuccessful:
+                        # Perfect!
+                        pass
+                if len(required) == len(retry):
+                    # This pass has resolved nothing, abort.
+                    raise InferenceError('Unable to infer value of "'
+                      + str(attr) + '" for var "' + str(var) + '"')
+                required = retry
+                retry = []
+    finally:
+        sys.path.pop()
+        sys.path.pop()
 class archive(cdf.archive):
     def __init__(self, *args, **kwargs):
         if 'skeleton' in kwargs:
