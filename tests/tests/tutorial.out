@@ -1,4 +1,5 @@
 ['foo', 'bar']
-[record(1), record(2), record(3), record(4), record(5)]
+[1, 2, 3, 4, 5]
+['a', 'b', 'see', 'd', 'e']
 {'Description': ['A test archive in Common Data Format']}
 {'Creation order': 'two'}

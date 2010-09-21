@@ -19,6 +19,7 @@ class CoherenceError(Exception):
     pass
 
 
+
 # Closure to ensure proper selection of CDF files.
 class selection:
     def __init__(self):
@@ -118,13 +119,23 @@ class record(numpy.ndarray):
             pass
 
     # Pythonic methods
-#    def __str__(self):
-#        return repr(self)
-#    def __repr__(self):
-#        if (self.shape is ()):
-#            return repr(numpy.asarray(self)[()])
-#        else:
-#            return repr(numpy.asarray(self))
+    # If there is only one value, it is not nice to make people parse out
+    # the array info.
+    def __repr__(self):
+        if (self.shape is ()):
+            return repr(self[()])
+        else:
+            return numpy.ndarray.__repr__(self)
+    # If there is only one value, it is not nice to make people have to
+    # figure out how to index it.
+    # TODO There are many more methods like this.  It would be nice to
+    # figure out how to coherently and easily override them all.
+    def __add__(self, other):
+        if (self.shape is ()):
+            return self[()] + other
+        else:
+            return ValueError
+
     # Internal methods
     def associateVariable(self, variable = None, num = None):
         self._variable = variable
@@ -279,8 +290,15 @@ class variable(list):
                 # old method
                 self._numpyType = value.dtype.type
         self._cdfType = typing._typeConversions[self._numpyType]
-        self._numElementsPerRecord = 1
         self._recVariance = internal.VARY
+        if self._numpyType == numpy.string_:
+            if self._numElementsPerRecord is None:
+                self._numElementsPerRecord = len(value[()])
+            else:
+                self._numElementsPerRecord = max(self._numElementsPerRecord, len(value[()]))
+        else:
+            self._numElementsPerRecord = 1
+
     def _dims(self, value):
         self._dimSizes = list(value.shape)
         self._dimVariances = [internal.VARY] * len(self._dimSizes)

@@ -16,6 +16,7 @@ def test():
     test2 = cdf.archive('test2')
     print test2.keys()
     print test2['foo']
+    print test2['bar']
     print test2.attributes
     print test2['bar'].attributes
 
