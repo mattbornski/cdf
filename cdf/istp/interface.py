@@ -10,6 +10,7 @@ import tempfile
 # cdf extension modules.
 from .. import interface as cdf
 from .. import internal
+from .. import typing
 
 ###
 # TODO: The complex interactions of the various strategies are not well
@@ -150,7 +151,7 @@ class fillValStrategy(fillStrategy):
     def __call__(self, archive, attr, var):
         if attr not in archive[var].attributes:
             archive[var].attributes[attr] \
-              = self.fillvals[archive[var]._cdfType]
+              = self.fillvals[typing._typeConversions[archive[var]._dtype.type]]
 
 class formatStrategy(fillStrategy):
     formats = {
@@ -170,7 +171,7 @@ class formatStrategy(fillStrategy):
     def __call__(self, archive, attr, var):
         if attr not in archive[var].attributes:
             archive[var].attributes[attr] \
-              = self.formats[archive[var]._cdfType]
+              = self.formats[typing._typeConversions[archive[var]._dtype.type]]
             raise _InferenceSuccessful
 
 class validminStrategy(fillStrategy):
@@ -191,7 +192,7 @@ class validminStrategy(fillStrategy):
     def __call__(self, archive, attr, var):
         if attr not in archive[var].attributes:
             archive[var].attributes[attr] \
-              = self.fillvals[archive[var]._cdfType]
+              = self.fillvals[typing._typeConversions[archive[var]._dtype.type]]
             raise _InferenceSuccessful
 
 class validmaxStrategy(fillStrategy):
@@ -212,7 +213,7 @@ class validmaxStrategy(fillStrategy):
     def __call__(self, archive, attr, var):
         if attr not in archive[var].attributes:
             archive[var].attributes[attr] \
-              = self.fillvals[archive[var]._cdfType]
+              = self.fillvals[typing._typeConversions[archive[var]._dtype.type]]
             raise _InferenceSuccessful
 
 class varTypeStrategy(fillStrategy):

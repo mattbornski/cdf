@@ -56,7 +56,7 @@ class record(numpy.ndarray):
         if variable is not None:
             obj = numpy.asarray(numpy.zeros(
                 shape = variable._dimSizes,
-                dtype = variable._numpyType)).view(cls)
+                dtype = variable._dtype)).view(cls)
         else:
             coerce = None
             if input_array is not None:
@@ -130,9 +130,9 @@ class record(numpy.ndarray):
     # figure out how to index it.
     # TODO There are many more methods like this.  It would be nice to
     # figure out how to coherently and easily override them all.
-    def __add__(self, other):
+    def __add__(self, *args, **kwargs):
         if (self.shape is ()):
-            return self[()] + other
+            return self[()].__add__(*args, **kwargs)
         else:
             return ValueError
 
@@ -193,8 +193,7 @@ class variable(list):
         self._dimSizes = None
         self._dimVariances = None
         self._num = None
-        self._cdfType = None
-        self._numpyType = None
+        self._dtype = None
         # References
         self._archive = None
         self.attributes = attribute.variableTable(self)
@@ -276,26 +275,21 @@ class variable(list):
         self._dims(ret)
         return ret
     def _type(self, value):
-        if self._numpyType is None:
+        if self._dtype is None:
             # Accept the type of this record without question.
-            self._numpyType = value.dtype.type
+            self._dtype = value.dtype
         else:
             try:
                 # Between the type of the record and the type of the variable,
                 # accept the more inclusive type.
-                self._numpyType \
-                  = typing.joinNumpyType(value.dtype.type, self._numpyType)
+                self._dtype = typing.joinNumpyType(value.dtype, self._dtype)
             except:
                 # If something went wrong (i.e. it was a string), use the
                 # old method
-                self._numpyType = value.dtype.type
-        self._cdfType = typing._typeConversions[self._numpyType]
+                self._dtype = value.dtype
         self._recVariance = internal.VARY
-        if self._numpyType == numpy.string_:
-            if self._numElementsPerRecord is None:
-                self._numElementsPerRecord = len(value[()])
-            else:
-                self._numElementsPerRecord = max(self._numElementsPerRecord, len(value[()]))
+        if self._dtype.type == numpy.string_:
+            self._numElementsPerRecord = self._dtype.itemsize
         else:
             self._numElementsPerRecord = 1
 
@@ -320,14 +314,13 @@ class variable(list):
                             self._tokens['MAXREC'],
                             self._tokens['RECVARY'],
                             self._tokens['DIMVARYS'])
-                self._cdfType = type
-                self._numpyType = typing._typeConversions[type]
+                self._dtype = numpy.dtype(typing._typeConversions[type])
                 self._numElementsPerRecord = elements
                 # The default numpy type obtained by simply informing it that
                 # we are dealing with strings results in truncating all read
                 # strings to 1 character width.
-                if self._numpyType == numpy.string_:
-                    self._numpyType = numpy.dtype(\
+                if self._dtype.type == numpy.string_:
+                    self._dtype = numpy.dtype(\
                         '|S' + str(self._numElementsPerRecord))
                 self._numRecords = records + 1
                 self._recVariance = recordsVary
@@ -447,10 +440,11 @@ class rVariable(variable):
         self._type(self[0])
         self._dims(self[0])
         (num, ) = internal.CDFlib(
-            internal.CREATE_,
-                self._tokens['SELECT_VARIABLE'],
-                    name, self._cdfType, self._numElementsPerRecord,
-                    self._recVariance, self._dimVariances)
+          internal.CREATE_,
+            self._tokens['SELECT_VARIABLE'],
+              name, typing._typeConversions[self._dtype.type],
+              self._numElementsPerRecord,
+              self._recVariance, self._dimVariances)
         self._num = num
         # Having created the variable, insert the data.
         internal.CDFlib(
@@ -501,7 +495,7 @@ class zVariable(variable):
         # The archive should have selected itself before calling us.
         # The archive passes us a name since we don't store that
         # information ourselves.
-        if self._cdfType == internal.CDF_CHAR:
+        if self._dtype.type == numpy.string_:
             # We appear to be composed of strings.  Since the internal
             # library used "numElementsPerRecord" as a string length
             # helper, and since all strings are supposed to be the
@@ -518,11 +512,12 @@ class zVariable(variable):
         if dimSizes is []:
             dimSizes = [0]
         (num, ) = internal.CDFlib(
-            internal.CREATE_,
-                self._tokens['SELECT_VARIABLE'],
-                    name, self._cdfType, self._numElementsPerRecord,
-                    nDims, dimSizes,
-                    self._recVariance, self._dimVariances)
+          internal.CREATE_,
+            self._tokens['SELECT_VARIABLE'],
+              name, typing._typeConversions[self._dtype.type],
+              self._numElementsPerRecord,
+              nDims, dimSizes,
+              self._recVariance, self._dimVariances)
         self._num = num
         # Having created the variable, insert the data.
         internal.CDFlib(

@@ -50,19 +50,6 @@ _typeConversions = {
   internal.CDF_UCHAR:       numpy.string_,
 }
 
-_numpyTypeSizes = {
-  numpy.byte:1,
-  numpy.int8:1,
-  numpy.int16:2,
-  numpy.int32:4,
-  numpy.int64:8,
-  numpy.uint8:1,
-  numpy.uint16:2,
-  numpy.uint32:4,
-  numpy.float32:4,
-  numpy.float64:8,
-}
-
 # This is a naive flow which doesn't take into account precision.  It does
 # take into account signing, however.
 _numpyTypeContains = {
@@ -76,6 +63,7 @@ _numpyTypeContains = {
   numpy.uint32:[numpy.uint16],
   numpy.float32:[numpy.int64],
   numpy.float64:[numpy.float32],
+  numpy.string_:[numpy.string_],
 }
 
 def _typeContainsOther(one, two, memo = None):
@@ -99,18 +87,71 @@ def _typeContainsOther(one, two, memo = None):
 
 def joinNumpyType(*args):
     ret = None
-    for type in args:
-        if ret is None or _typeContainsOther(type, ret):
-            ret = type
-        elif not _typeContainsOther(ret, type):
-            # Abort.
-            ret = None
+    for dtype in args:
+        if not isinstance(dtype, numpy.dtype):
+            dtype = numpy.dtype(dtype)
+        if ret is None:
+            ret = dtype
+        elif _typeContainsOther(dtype.type, ret.type) \
+          and dtype.itemsize >= ret.itemsize:
+            ret = dtype
+        elif not _typeContainsOther(ret.type, dtype.type) \
+          or dtype.itemsize > ret.itemsize:
+            # There's not a simple inclusion here.  We might have to
+            # upgrade to a third type which encapsulates both.
+            candidates = []
+            for type in _numpyTypeContains:
+                if _typeContainsOther(type, ret.type) \
+                  and _typeContainsOther(type, dtype.type):
+                    candidates.append(type)
+            if len(candidates) > 0:
+                # TODO choose the type from the available candidates more
+                # intelligently.
+                ret = numpy.dtype(candidates[0])
+            else:
+                # Abort.
+                ret = None
             break
     return ret
 
 def joinCdfType(*args):
     # These are CDF types.
-    try:
-        return _typeConversions[joinNumpyType(*[_typeConversions[type] for type in args])]
-    except KeyError:
-        return None
+#    try:
+        return _typeConversions[joinNumpyType(*[_typeConversions[type] for type in args]).type]
+#    except KeyError:
+#        return None
+
+# Helper class for objects which must have the same type and dimensionality.
+# In typing objects for CDF, it's important to note a few things.
+# The type assigned in the file may or may not be authoritative.  If you
+# are using the Pythonic interface of this CDF package, it is not - the
+# types are assigned because the standard requires them, not because we
+# wish to restrict the data to the type given.  If you're reading in
+# somebody else's CDF file, painstakingly crafted by hand, they might very
+# well be by design.  There is no good and well understood way to pass
+# along the intent behind the typing, and so we assume that types set
+# in the file are _not_ authoritative, and may be changed as needed
+# to accommodate new data.
+# If at any point during a session, however, the _user_ assigns a type
+# explicitly, that is understood to be authoritative, for pretty clear
+# reasons.
+# Knowing the type of the data is important when:
+# 1.) the underlying internal interface is reading the data from the file
+#     and must allocate and manage storage properly
+# 2.) the pythonic interface is attempting to warn the user of incompatible
+#     data types in a set of objects which are supposed to be of the
+#     same type and dimensionality.  TODO: warnings at time of assignment
+#     are not yet implemented.
+# 3.) the pythonic interface instructs the internal interface to allocate
+#     storage for the set of data in preparation for writing the data to
+#     disk.
+# In the first case, we know the type by simply querying the file.  In the
+# third case, it is easy enough to determine the type by polling all data,
+# as we are already committed to an order n operation in the write itself.
+# It's the second case that's trickiest, as it means we must maintain a
+# constantly-updated understanding of which types we can and cannot use.
+# We can do this by basing our initial type off of the type currently
+# assigned in the file, and modifying this guess based on the deletions
+# and assignments the user carries out over the course of the session.
+class uniformCdfTyped:
+    pass

@@ -1,1 +1,1 @@
-{'foo': [record(1), record(2), record(3)]}
+{'foo': [1, 2, 3]}
