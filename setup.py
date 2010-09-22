@@ -135,7 +135,7 @@ if __name__ == '__main__':
     # on this system.
     distutils.core.setup(
       name = 'CDF',
-      version = '0.22',
+      version = '0.23',
       description = 'This package handles files in NASA Common Data Format',
       author = 'Matt Born',
       author_email = 'mattborn@ssl.berkeley.edu',
