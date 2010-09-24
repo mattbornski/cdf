@@ -437,10 +437,17 @@ void *rebinFromPythonToC(PyObject *in, long type) {
     if (in != NULL) {
         Py_IncRef(in);
         void *out = NULL;
-        if (PyString_Check(in)) {
-            /* Borrow the representation of the contents. */
-            long len = PyString_Size(in);
-            void *tmp = (void *)PyString_AsString(in);
+        if (PyString_Check(in) || PyUnicode_Check(in)) {
+            long len;
+            void *tmp = NULL;
+            if (PyString_Check(in)) {
+                /* Borrow the representation of the contents. */
+                len = PyString_Size(in);
+                tmp = (void *)PyString_AsString(in);
+            } else {
+                len = PyUnicode_GetSize(in);
+                tmp = (void *)PyUnicode_AsASCIIString(in);
+            }
             if (tmp != NULL) {
                 out = alloc(calloc(sizeof(char), len + 1));
                 if (out != NULL) {

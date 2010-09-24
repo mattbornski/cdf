@@ -32,6 +32,7 @@ _typeConversions = {
   epoch:                    internal.CDF_EPOCH,
   epoch16:                  internal.CDF_EPOCH16,
   numpy.string_:            internal.CDF_CHAR,
+  numpy.unicode_:           internal.CDF_CHAR,
   # CDF to NumPy
   internal.CDF_BYTE:        numpy.byte,
   internal.CDF_INT1:        numpy.int8,
@@ -63,7 +64,7 @@ _numpyTypeContains = {
   numpy.uint32:[numpy.uint16],
   numpy.float32:[numpy.int64],
   numpy.float64:[numpy.float32],
-  numpy.string_:[numpy.string_],
+  numpy.string_:[numpy.string_, numpy.unicode_]
 }
 
 def _typeContainsOther(one, two, memo = None):
