@@ -1,4 +1,4 @@
-import distutils.core
+import setuptools
 import glob
 import os
 import os.path
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     # End of NASA GSFC CDF library source files.
 
     # Define a C extension.
-    internal = [distutils.core.Extension(
+    internal = [setuptools.Extension(
       'cdf.internal',
       sources = [
         # The core code for the Python extension
@@ -133,7 +133,7 @@ if __name__ == '__main__':
     # Invoke the setup code, which will (depending on the command line
     # arguments) build, install, or otherwise tinker with this package
     # on this system.
-    distutils.core.setup(
+    setuptools.setup(
       name = 'CDF',
       version = '0.24',
       description = 'This package handles files in NASA Common Data Format',
