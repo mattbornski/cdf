@@ -95,7 +95,14 @@ class record(numpy.ndarray):
         dup._num = None
         dup._placeholder = None
         return dup
-
+    def __setitem__(self, key, value):
+        if isinstance(key, tuple) and len(key) > 0:
+            if len(key) > 1:
+                self[key[0]][key[1:]] = value
+            else:
+                self[key[0]] = value
+        else:
+            numpy.ndarray.__setitem__(self, key, value)
     # Selection function
     def select(self):
         if self._variable is not None:
@@ -159,7 +166,7 @@ class record(numpy.ndarray):
                             internal.GET_,
                                 self._variable._tokens['DATA'])
                         self[index] = value
-                self._placeholder = False
+                    self._placeholder = False
     def _write(self):
         # The variable must have selected itself before calling us.
         internal.CDFlib(
@@ -325,7 +332,6 @@ class variable(list):
                 self._numRecords = records + 1
                 self._recVariance = recordsVary
                 self._dimVariances = dimensionsVary
-                self._dimSizes = archive._dimSizes
 
     def _fill(self):
         # Fetch all of the data records for this variable.
@@ -433,6 +439,12 @@ class rVariable(variable):
         return rVariable
 
     # Internal methods
+    def _meta(self):
+        variable._meta(self)
+        if self._archive is not None:
+            archive = self._archive()
+            if archive is not None:
+                self._dimSizes = archive._dimSizes
     def _write(self, name):
         # The archive should have selected itself before calling us.
         # The archive passes us a name since we don't store that
@@ -491,6 +503,12 @@ class zVariable(variable):
         return zVariable
 
     # Internal methods
+    def _meta(self):
+        variable._meta(self)
+        (dimSizes, ) = internal.CDFlib(
+            internal.GET_,
+                internal.zVAR_DIMSIZES_)
+        self._dimSizes = dimSizes
     def _write(self, name):
         # The archive should have selected itself before calling us.
         # The archive passes us a name since we don't store that
