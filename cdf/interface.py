@@ -167,6 +167,13 @@ class record(numpy.ndarray):
                                 self._variable._tokens['DATA'])
                         self[index] = value
                     self._placeholder = False
+                    print self
+                    hyper = internal.CDFlib(
+                        internal.GET_,
+                            self._variable._tokens['HYPER'])
+                    print hyper
+                    import sys
+                    sys.exit(0)
     def _write(self):
         # The variable must have selected itself before calling us.
         internal.CDFlib(
@@ -339,7 +346,15 @@ class variable(list):
             internal.CDFlib(
                 internal.SELECT_,
                     self._tokens['SELECT_VARIABLE'],
-                        self._num)
+                        self._num,
+                    self._tokens['RECCOUNT'],
+                        1,
+                    self._tokens['RECINTERVAL'],
+                        1,
+                    self._tokens['DIMCOUNTS'],
+                        self._dimSizes,
+                    self._tokens['DIMINTERVALS'],
+                        tuple([1 for dim in self._dimSizes]))
             if self._numRecords is not None:
                 for i in xrange(0, self._numRecords):
                     rec = record(variable = self, num = i)
@@ -417,6 +432,10 @@ class rVariable(variable):
         'MAXREC':internal.rVAR_MAXREC_,
         'RECVARY':internal.rVAR_RECVARY_,
         'DIMVARYS':internal.rVAR_DIMVARYS_,
+        'RECCOUNT':internal.rVARs_RECCOUNT_,
+        'RECINTERVAL':internal.rVARs_RECINTERVAL_,
+        'DIMCOUNTS':internal.rVARs_DIMCOUNTS_,
+        'DIMINTERVALS':internal.rVARs_DIMINTERVALS_,
         # Tokens princiapally used for selecting context of attribute.
         'NAME':internal.ATTR_NAME_,
         'SELECT_ATTR':internal.ATTR_,
@@ -426,6 +445,7 @@ class rVariable(variable):
         'GET_ENTRY_DATATYPE':internal.rENTRY_DATATYPE_,
         'GET_ENTRY_NUMELEMS':internal.rENTRY_NUMELEMS_,
         'GET_ATTR_NUMENTRIES':internal.ATTR_NUMrENTRIES_,
+        'HYPER':internal.rVAR_HYPERDATA_,
     }
     def __init__(self, value = None, archive = None, num = None):
         # Flags
@@ -484,6 +504,10 @@ class zVariable(variable):
         'MAXREC':internal.zVAR_MAXREC_,
         'RECVARY':internal.zVAR_RECVARY_,
         'DIMVARYS':internal.zVAR_DIMVARYS_,
+        'RECCOUNT':internal.zVAR_RECCOUNT_,
+        'RECINTERVAL':internal.zVAR_RECINTERVAL_,
+        'DIMCOUNTS':internal.zVAR_DIMCOUNTS_,
+        'DIMINTERVALS':internal.zVAR_DIMINTERVALS_,
         # Tokens princiapally used for selecting context of attribute.
         'NAME':internal.ATTR_NAME_,
         'SELECT_ATTR':internal.ATTR_,
@@ -493,6 +517,7 @@ class zVariable(variable):
         'GET_ENTRY_DATATYPE':internal.zENTRY_DATATYPE_,
         'GET_ENTRY_NUMELEMS':internal.zENTRY_NUMELEMS_,
         'GET_ATTR_NUMENTRIES':internal.ATTR_NUMzENTRIES_,
+        'HYPER':internal.zVAR_HYPERDATA_,
     }
     def __init__(self, value = None, archive = None, num = None):
         # Call base class initialization

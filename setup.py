@@ -143,7 +143,9 @@ if __name__ == '__main__':
       classifiers = [
         'Development Status :: 4 - Beta', 
         'Intended Audience :: Science/Research',
-        'Topic :: Scientific/Engineering :: Astronomy'],
+        'License :: OSI Approved :: Apache Software License',
+        'Topic :: Scientific/Engineering :: Astronomy',
+      ],
       ext_modules = internal,
       py_modules = standard + pythonic + istp,
       requires = ['numpy (>=1.4)'],

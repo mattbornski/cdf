@@ -601,22 +601,38 @@ PyObject *castFromCdfToPython(long cdf_type, void *in) {
     return out;
 }
 
-/* Perform a GET_ query with the given token and return a long result. */
-long getToken(long token) {
+long *longsFromTwoTokens(long one, long two) {
     PyObject *input = PyTuple_New(3);
-    PyTuple_SetItem(input, 0, PyLong_FromLong(GET_));
-    PyTuple_SetItem(input, 1, PyLong_FromLong(token));
+    PyTuple_SetItem(input, 0, PyLong_FromLong(one));
+    PyTuple_SetItem(input, 1, PyLong_FromLong(two));
     PyTuple_SetItem(input, 2, PyLong_FromLong(NULL_));
     PyObject *output = cdf_internal_CDFlib(NULL, input);
     Py_DecRef(input);
-    long result = -1;
+    long *result = NULL;
     if (output != NULL) {
         if (PyTuple_Check(output)) {
-            result = PyLong_AsLong(PyTuple_GetItem(output, 0));
+            int i = 0;
+            result = alloc(calloc(PyTuple_Size(output), sizeof(long)));
+            for (i = 0; i < PyTuple_Size(output); i++) {
+                result[i] = PyLong_AsLong(PyTuple_GetItem(output, i));
+            }
         }
         Py_DecRef(output);
     }
     return result;
+}
+
+long longFromTwoTokens(long one, long two) {
+    long ret;
+    long *out = longsFromTwoTokens(one, two);
+    ret = out[0];
+    free(out);
+    return ret;
+}
+
+/* Perform a GET_ query with the given token and return a long result. */
+long getToken(long token) {
+    return longFromTwoTokens(GET_, token);
 }
 
 /* Perform a GET_ query for the size of the given datatype token and return
@@ -735,6 +751,16 @@ long typeHelper_rVAR_(PyObject *tokens) {
 
 long typeHelper_zVAR_(PyObject *tokens) {
     return getToken(zVAR_DATATYPE_);
+}
+
+/* Determine how much memory must be allocated for the current
+ * selection, allocate it, and cast it to a long. */
+long hyperAllocHelper_rVAR_(PyObject *tokens) {
+    return typeHelper_rVAR_(tokens);
+}
+
+long hyperAllocHelper_zVAR_(PyObject *tokens) {
+    return typeHelper_zVAR_(tokens);
 }
 
 /* Look up how many dimensions rVariables in the current
@@ -911,6 +937,79 @@ PyObject *tokenFormat_x_l(long one, long two, PyObject *tokens,
     long out_1;
     if (check(CDFlib(one, two, &out_1, NULL_))) {
         return Py_BuildValue("(l)", out_1);
+    }
+    return NULL;
+}
+
+PyObject *tokenCustom_zVAR_V(long one, long two, PyObject *tokens,
+    long (*helper)(PyObject *)) {
+    long i = 0;
+    // Assume the user has selected everything appropriately.  Determine
+    // the size and configuration of the memory structure we need based
+    // on the selections.
+    // The number of dimensions is the same as the number of dimensions in
+    // the variable records plus a dimension if we are retrieving more
+    // than one record at a time.
+    long records = longFromTwoTokens(CONFIRM_, zVAR_RECCOUNT_);
+    long record = (records > 1 ? 1 : 0);
+    long count = longFromTwoTokens(GET_, zVAR_NUMDIMS_);
+    long *dims = alloc(calloc(sizeof(long), count + record));
+    if (record) {
+        dims[0] = records;
+    }
+    if (count > 0) {
+        long *lengths = longsFromTwoTokens(GET_, zVAR_DIMSIZES_);
+        long *intervals = longsFromTwoTokens(CONFIRM_, zVAR_DIMINTERVALS_);
+        for (i = 0; i < count; i++) {
+            dims[i + record] = (lengths[i] > 0 ? lengths[i] : 1);
+        }
+    }
+    long type = typeHelper_zVAR_(NULL);
+    long size = getSize(type);
+    void **out_1 = multiDimensionalArray(dims, count + record, size);
+    if (check(CDFlib(one, two, out_1, NULL_))) {
+        // Now we need to convert the buffer into the appropriate structure
+        // of arrays within arrays.
+        PyObject *conv_1 = NULL;
+        if (count + record == 0) {
+            conv_1 = ownedPythonListFromArray(NULL, 0, type);
+            PyList_Append(conv_1, castFromCdfToPython(type, out_1));
+        } else {
+            conv_1 = ownedPythonListOfListsFromArray(
+              out_1, dims, count + record, type);
+        }
+        free(out_1);
+        return Py_BuildValue("(O)", conv_1);
+    }
+    free(out_1);
+    return NULL;
+}
+
+PyObject *tokenFormat_x_p(long one, long two, PyObject *tokens,
+    long (*helper)(PyObject *)) {
+    if (helper != NULL) {
+        long type = helper(tokens);
+        if (type < 0) {
+            return tokenFormat_x_s(one, two, tokens, helper);
+        } else {
+            long len = type % TYPE_MOD;
+            type -= len;
+            type /= TYPE_MOD;
+            if (len > 0) {
+                long size = getSize(type);
+                void *out_1 = alloc(calloc(size, len));
+                if (out_1 != NULL) {
+                    if (check(CDFlib(one, two, out_1, NULL_))) {
+                        /* Convert array into Python list. */
+                        PyObject *conv_1
+                          = ownedPythonListFromArray(out_1, len, type);
+                        free(out_1);
+                        return Py_BuildValue("(O)", conv_1);
+                    }
+                    free(out_1);
+                }
+            }
+        }
     }
     return NULL;
 }
@@ -1497,13 +1596,13 @@ arrayOfArrayPointers(long count) {
     return NULL;
 }
 
-long *arrayOfLongs(long count) {
+void *array(long count, long size) {
     if (count > 0) {
-        long *ret = (long *)calloc(count, sizeof(long));
+        void *ret = calloc(count, size);
 
         if (ret == NULL) {
-            printf("Failed to allocate memory for long array "
-                "of size %ld.\n", count);
+            printf("Failed to allocate memory for array "
+                "of %ld items of %ld size.\n", count, size);
             return NULL;
         }
         return ret;
@@ -1511,27 +1610,31 @@ long *arrayOfLongs(long count) {
     return NULL;
 }
 
+long *arrayOfLongs(long count) {
+    return (long *)array(count, sizeof(long));
+}
+
 void **
-multiDimensionalArray(long *dims, long count) {
+multiDimensionalArray(long *dims, long count, long size) {
     long i;
 
-    if (dims != NULL) {
-        if (dims[0] > 0) {
-            if (count > 1) {
-                void **level = arrayOfArrayPointers(dims[0]);
-                if (level == NULL) {
-                    printf("Failed to allocate memory for array dimension.\n");
-                    return NULL;
-                }
-                for (i = 0; i < dims[0]; i++) {
-                    level[i] = multiDimensionalArray(
-                        (long *)(&(dims[1])), (count - 1));
-                }
-                return level;
-            } else {
-                return (void **)arrayOfLongs(dims[0]);
+    if ((dims != NULL) && (dims[0] > 0) && (count > 0)) {
+        if (count > 1) {
+            void **level = arrayOfArrayPointers(dims[0]);
+            if (level == NULL) {
+                printf("Failed to allocate memory for array dimension.\n");
+                return NULL;
             }
+            for (i = 0; i < dims[0]; i++) {
+                level[i] = multiDimensionalArray(
+                  (long *)(&(dims[1])), (count - 1), size);
+            }
+            return level;
+        } else {
+            return (void **)array(dims[0], size);
         }
+    } else if (size > 0) {
+        return alloc(calloc(size, 1));
     }
     return NULL;
 }
@@ -1554,7 +1657,8 @@ cleanupMultiDimensionalArray(void **array, long *dims, long count) {
 }
 
 PyObject *
-ownedPythonListOfListsFromArray(void **array, long *dims, long count) {
+ownedPythonListOfListsFromArray(void **array, long *dims, long count, long type) {
+
     PyObject *list = NULL;
     PyObject *tmp = NULL;
     long i;
@@ -1565,7 +1669,7 @@ ownedPythonListOfListsFromArray(void **array, long *dims, long count) {
             if (list != NULL) {
                 for (i = 0; i < dims[0]; i++) {
                     tmp = ownedPythonListOfListsFromArray(
-                        (void *)(&(array[i])), (long *)(&(dims[1])), (count - 1));
+                        (void *)(&(array[i])), (long *)(&(dims[1])), (count - 1), type);
                     if (tmp != NULL) {
                         PyList_SetItem(list, i, tmp);
                     } else {
@@ -1579,7 +1683,7 @@ ownedPythonListOfListsFromArray(void **array, long *dims, long count) {
                 return NULL;
             }
         } else {
-            return ownedPythonListFromArray((void *)array, dims[0], CDF_INT4);
+            return ownedPythonListFromArray((void *)array, dims[0], type);
         }
     }
     printf("Not enough information to generate new Python list.\n");

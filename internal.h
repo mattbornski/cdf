@@ -360,9 +360,9 @@ DECLARE_CONSTANT(CDFwithSTATS_)
  **/
 long *allocatedArrayFromOwnedPythonSequence(PyObject *list);
 PyObject *ownedPythonListFromArray(void *array, long len, long type);
-void **multiDimensionalArray(long *dims, long count);
+void **multiDimensionalArray(long *dims, long count, long size);
 void cleanupMultiDimensionalArray(void **array, long *dims, long count);
-PyObject *ownedPythonListOfListsFromArray(void **array, long *dims, long count);
+PyObject *ownedPythonListOfListsFromArray(void **array, long *dims, long count, long type);
 
 
 
@@ -424,6 +424,7 @@ PyObject *tokenFormat_lL_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_llV_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_lLV_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_x_l(long, long, PyObject *, long (*)(PyObject *));
+PyObject *tokenFormat_x_p(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_x_L(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_x_v(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_x_V(long, long, PyObject *, long (*)(PyObject *));
@@ -441,6 +442,7 @@ PyObject *tokenFormat_slllLlL_l(long, long, PyObject *, long (*)(PyObject *));
  * too complex to be nicely handled with a helper function. */
 PyObject *tokenCustom_rVAR_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenCustom_zVAR_x(long, long, PyObject *, long (*)(PyObject *));
+PyObject *tokenCustom_zVAR_V(long, long, PyObject *, long (*)(PyObject *));
 
 /* Helper functions. */
 /* A helper function is sometimes passed to the third level token
@@ -461,6 +463,8 @@ long typeHelper_rVAR_(PyObject *);
 long typeHelper_zVAR_(PyObject *);
 long typeHelper_rVARs_(PyObject *);
 long typeHelper_zVARs_(PyObject *);
+long hyperAllocHelper_rVAR_(PyObject *);
+long hyperAllocHelper_zVAR_(PyObject *);
 long helper_GET_rVARs_NUMDIMS_(PyObject *);
 long helper_GET_zVAR_NUMDIMS_(PyObject *);
 long helper_GET_gENTRY_DATATYPE_(PyObject *);
@@ -598,12 +602,12 @@ static CdfSecondTierToken cdf_internal_token_tables_GET_[] = {
     {1, gENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_gENTRY_DATATYPE_},
     {1, rENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_rENTRY_DATATYPE_},
     {1, rVAR_DATA_, &tokenFormat_x_v, 0,& typeHelper_rVAR_},
-    {1, rVAR_HYPERDATA_, &tokenFormat_x_V, 0, &typeHelper_rVAR_},
+    {1, rVAR_HYPERDATA_, &tokenFormat_x_p, 0, &hyperAllocHelper_rVAR_},
     {1, rVAR_PADVALUE_, &tokenFormat_x_v, 0, &typeHelper_rVAR_},
     {1, rVAR_SEQDATA_, &tokenFormat_x_v, 0, &typeHelper_rVAR_},
     {1, zENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_zENTRY_DATATYPE_},
     {1, zVAR_DATA_, &tokenFormat_x_v, 0, &typeHelper_zVAR_},
-    {1, zVAR_HYPERDATA_, &tokenFormat_x_V, 0, &typeHelper_zVAR_},
+    {1, zVAR_HYPERDATA_, &tokenCustom_zVAR_V, 0, &hyperAllocHelper_zVAR_},
     {1, zVAR_PADVALUE_, &tokenFormat_x_v, 0, &typeHelper_zVAR_},
     {1, zVAR_SEQDATA_, &tokenFormat_x_v, 0, &typeHelper_zVAR_},
     {1, LIB_subINCREMENT_, &tokenFormat_x_c, 0, NULL},

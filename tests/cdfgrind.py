@@ -4,6 +4,7 @@ import cdf
 import glob
 import os
 import sys
+import time
 import unittest
 
 # If python didn't get compiled with PYDEBUG enabled we can't keep
@@ -23,9 +24,15 @@ def check_test_suite():
     t = unittest.TextTestRunner(stream=file(os.devnull, 'w'))
     t.run(tests)
 
-def loop(filename, count=10):
+def loop(filename, count=3):
+    times = []
     for i in xrange(0, count):
+        start = time.time()
         # Do something stressful
+        c = cdf.archive(filename)
+        times.append(time.time() - start)
+        print 'Run #' + str(len(times)) + ': ' + str(times[-1])
+    print 'Average: ' + str(sum(times) / len(times))
 
 if __name__ == '__main__':
-    a = cdf.archive(sys.argv[1])
+    loop(sys.argv[1])
