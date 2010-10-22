@@ -103,6 +103,14 @@ class record(numpy.ndarray):
                 self[key[0]] = value
         else:
             numpy.ndarray.__setitem__(self, key, value)
+    def __getitem__(self, key):
+        if isinstance(key, tuple) and len(key) > 0:
+            if len(key) > 1:
+                return self[key[0]][key[1:]]
+            else:
+                return self[key[0]]
+        else:
+            return numpy.ndarray.__getitem__(self, key)
     # Selection function
     def select(self):
         if self._variable is not None:
@@ -154,6 +162,14 @@ class record(numpy.ndarray):
         else:
             for i in xrange(0, len(hyper)):
                 self._dehyper(shape + [i], hyper[i])
+    def _hyper(self, shape, index):
+        if len(shape) > 0:
+            ret = []
+            for i in xrange(0, shape[0]):
+                ret.append(self._hyper(shape[1:], index + [i]))
+            return ret
+        else:
+            return [self[tuple(index)]]
     def _fill(self):
         if self._placeholder and self._variable is not None:
             with self.selection(self) as selection:
@@ -201,22 +217,21 @@ class record(numpy.ndarray):
                                 [1 for dim in self._variable._dimSizes],
                             self._variable._tokens['INDEX'],
                                 [0 for dim in self._variable._dimSizes])
-#                try:
+# Hyper writes are not yet ready for prime time.
+#                hyper = self._hyper(list(self.shape), [])
 #                internal.CDFlib(
 #                    internal.PUT_,
 #                        self._variable._tokens['HYPER'],
-#                            self)
-#                except:
-                if True:
-                    for (index, value) in numpy.ndenumerate(self):
-                        if index is not ():
-                            internal.CDFlib(
-                                internal.SELECT_,
-                                    self._variable._tokens['INDEX'],
-                                        index)
+#                            hyper)
+                for (index, value) in numpy.ndenumerate(self):
+                    if index is not ():
                         internal.CDFlib(
-                            internal.PUT_,
-                                self._variable._tokens['DATA'], value)
+                            internal.SELECT_,
+                                self._variable._tokens['INDEX'],
+                                    index)
+                    internal.CDFlib(
+                        internal.PUT_,
+                            self._variable._tokens['DATA'], value)
     def indices(self):
         # This is a generator function which will iterate over all
         # indices of this variable.  It is suitable for calls to
@@ -783,7 +798,8 @@ class archive(dict):
                 self._filenames.remove(filename)
             self._filenames.append(filename)
         with self.selection(self, filename) as selection:
-            self._save()
+            if selection:
+                self._save()
     def _save(self):
         # If there have been things removed from the archive then we
         # need to remove them on disk.  Order matters here, because

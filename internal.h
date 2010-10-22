@@ -22,7 +22,8 @@
 #include <stdint.h>*/
 /* Used to create NumPy arrays natively and read them when passed as
  * arguments. */
-#include <numpy/noprefix.h>
+/* not currently used, but should be to help with memory and speed
+#include <numpy/noprefix.h>*/
 
 
 /* Simple macro for maximum length to allocate for strings. */

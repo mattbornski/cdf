@@ -426,14 +426,16 @@ int check(CDFstatus status) {
 
 /* Helper function to handle logic of throwing exceptions when
  * allocations fail. */
-void *alloc(void *region) {
+void *
+alloc(void *region) {
     if (region == NULL) {
         PyErr_NoMemory();
     }
     return region;
 }
 
-void *rebinFromPythonToC(PyObject *in, long type) {
+void *
+rebinFromPythonToC(PyObject *in, long type) {
     if (in != NULL) {
         Py_IncRef(in);
         void *out = NULL;
@@ -457,6 +459,18 @@ void *rebinFromPythonToC(PyObject *in, long type) {
         } else {
             long len = PySequence_Check(in) ? PySequence_Size(in) : 1;
             long size = getSize(type);
+            if (size == -1) {
+                PyObject *item = in;
+                if (PySequence_Check(in)) {
+                    item = PySequence_GetItem(in, 0);
+                }
+                if (PyInt_Check(item) || PyLong_Check(item)) {
+                    type = CDF_INT4;
+                } else {
+                    type = CDF_FLOAT;
+                }
+                size = getSize(type);
+            }
             out = alloc(calloc(size, len));
 
             if (out != NULL) {
@@ -1013,8 +1027,69 @@ PyObject *getHyperData(int z, long one, long two) {
     return NULL;
 }
 
+void hyperDataFromOwnedPythonSequenceTrees(
+  void **buffer, PyObject *data, long *dims, long n_dims, long type) {
+    if ((n_dims <= 1) && (type != CDF_CHAR)) {
+        long i = 0;
+        for (i = 0; i < PyList_Size(data); i++) {
+            void **tmp = rebinFromPythonToC(PyList_GetItem(PyList_GetItem(data, i), 0), type);
+            memcpy(buffer[i], tmp, getSize(type));
+            free(tmp);
+        }
+    } else if (n_dims > 0) {
+        long i = 0;
+        for (i = 0; i < PyList_Size(data); i++) {        
+            hyperDataFromOwnedPythonSequenceTrees(buffer[i], PyList_GetItem(data, i), dims + 1, n_dims - 1, type);
+        }
+    } else {
+        if (PyList_Check(data) && (PyList_Size(data) == 1)) {
+            PyObject *item = PySequence_GetItem(data, 0);
+            /* Convert this from a sequence to a string before
+             * calling in to the rebin function, otherwise it
+             * will miss the string processing and get caught
+             * in the integer processing. */
+            if (PyString_Check(item) || PyUnicode_Check(item)) {
+                data = item;
+            }
+        }
+        if (data != NULL) {
+            void **tmp = rebinFromPythonToC(data, type);
+            if (tmp != NULL) {
+                long len;
+                if (type == CDF_CHAR) {
+                    len = strlen((const char *)tmp) + 1;
+                    memcpy(buffer, tmp, len);
+                } else {
+                    len = getSize(type) * dims[0];
+                    ((long *)buffer)[0] = ((long *)tmp)[0];
+//                    memcpy(buffer, &tmp, len);
+                }
+                free(tmp);
+            }
+        }
+    }
+}
+
 PyObject *setHyperData(int z, long one, long two, PyObject *tokens) {
-    return Py_None;
+    PyObject *in_1 = NULL;
+    if (PyArg_ParseTuple(tokens, "O", &in_1)) {
+        long n_dims = longFromTwoTokens(
+          GET_, (z ? zVAR_NUMDIMS_ : rVARs_NUMDIMS_));
+        long *dims = alloc(calloc(sizeof(long), n_dims + 1));
+        long type = (z ? typeHelper_zVAR_(NULL) : typeHelper_rVAR_(NULL));
+        long size = getSize(type);
+        void **conv_1 = allocateHyperDataStorage(z, dims, n_dims, size);
+        hyperDataFromOwnedPythonSequenceTrees(conv_1, in_1, dims, n_dims, type);
+        //void *conv_1 = alloc(allocatedArrayFromOwnedPythonSequence(in_1));
+        if (conv_1 != NULL) {
+            if (check(CDFlib(one, two, conv_1, NULL_))) {
+                cleanupMultiDimensionalArray(conv_1, dims, n_dims);
+                return Py_None;
+            }
+            cleanupMultiDimensionalArray(conv_1, dims, n_dims);
+        }
+    }
+    return NULL;
 }
 
 PyObject *tokenCustom_x_rVARs(long one, long two, PyObject *tokens,
@@ -1558,7 +1633,11 @@ allocatedArrayFromOwnedPythonSequence(PyObject *sequence) {
                 for (i = 0; i < len; i++) {
                     item = PySequence_GetItem(sequence, i);
                     if (item != NULL) {
-                        array[i] = PyLong_AsLong(item);
+                        if (PyLong_Check(item)) { 
+                            array[i] = PyLong_AsLong(item);
+                        } else if (PyInt_Check(item)) {
+                            array[i] = PyInt_AsLong(item);
+                        }
                     } else {
                         free(array);
                         return NULL;
