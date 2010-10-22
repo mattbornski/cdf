@@ -20,7 +20,9 @@
  * length is very important. */
 /* not currently used, but could be used to reference int8_t, int32_t, etc.
 #include <stdint.h>*/
-
+/* Used to create NumPy arrays natively and read them when passed as
+ * arguments. */
+#include <numpy/noprefix.h>
 
 
 /* Simple macro for maximum length to allocate for strings. */
@@ -417,14 +419,13 @@ PyObject *CdfSecondTierTokenHandler(long, PyObject *, long *,
 PyObject *tokenFormat_x_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_l_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_L_x(long, long, PyObject *, long (*)(PyObject *));
-PyObject *tokenFormat_p_x(long, long, PyObject *, long (*)(PyObject *));
+PyObject *tokenFormat_v_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_s_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_ll_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_lL_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_llV_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_lLV_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_x_l(long, long, PyObject *, long (*)(PyObject *));
-PyObject *tokenFormat_x_p(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_x_L(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_x_v(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenFormat_x_V(long, long, PyObject *, long (*)(PyObject *));
@@ -442,7 +443,10 @@ PyObject *tokenFormat_slllLlL_l(long, long, PyObject *, long (*)(PyObject *));
  * too complex to be nicely handled with a helper function. */
 PyObject *tokenCustom_rVAR_x(long, long, PyObject *, long (*)(PyObject *));
 PyObject *tokenCustom_zVAR_x(long, long, PyObject *, long (*)(PyObject *));
-PyObject *tokenCustom_zVAR_V(long, long, PyObject *, long (*)(PyObject *));
+PyObject *tokenCustom_x_rVARs(long, long, PyObject *, long (*)(PyObject *));
+PyObject *tokenCustom_x_zVARs(long, long, PyObject *, long (*)(PyObject *));
+PyObject *tokenCustom_rVARs_x(long, long, PyObject *, long (*)(PyObject *));
+PyObject *tokenCustom_zVARs_x(long, long, PyObject *, long (*)(PyObject *));
 
 /* Helper functions. */
 /* A helper function is sometimes passed to the third level token
@@ -599,13 +603,13 @@ static CdfSecondTierToken cdf_internal_token_tables_GET_[] = {
     {1, DATATYPE_SIZE_, &tokenFormat_l_l, 1, NULL},
     {1, gENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_gENTRY_DATATYPE_},
     {1, rENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_rENTRY_DATATYPE_},
-    {1, rVAR_DATA_, &tokenFormat_x_v, 0,& typeHelper_rVAR_},
-    {1, rVAR_HYPERDATA_, &tokenFormat_x_p, 0, NULL},
+    {1, rVAR_DATA_, &tokenFormat_x_v, 0, &typeHelper_rVAR_},
+    {1, rVAR_HYPERDATA_, &tokenCustom_x_rVARs, 0, NULL},
     {1, rVAR_PADVALUE_, &tokenFormat_x_v, 0, &typeHelper_rVAR_},
     {1, rVAR_SEQDATA_, &tokenFormat_x_v, 0, &typeHelper_rVAR_},
     {1, zENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_zENTRY_DATATYPE_},
     {1, zVAR_DATA_, &tokenFormat_x_v, 0, &typeHelper_zVAR_},
-    {1, zVAR_HYPERDATA_, &tokenCustom_zVAR_V, 0, NULL},
+    {1, zVAR_HYPERDATA_, &tokenCustom_x_zVARs, 0, NULL},
     {1, zVAR_PADVALUE_, &tokenFormat_x_v, 0, &typeHelper_zVAR_},
     {1, zVAR_SEQDATA_, &tokenFormat_x_v, 0, &typeHelper_zVAR_},
     {1, LIB_subINCREMENT_, &tokenFormat_x_c, 0, NULL},
@@ -645,13 +649,13 @@ static CdfSecondTierToken cdf_internal_token_tables_PUT_[] = {
     {1, zVAR_INITIALRECS_, &tokenFormat_l_x, 1, NULL},
     {1, zVAR_RECVARY_, &tokenFormat_l_x, 1, NULL},
     {1, rVAR_DATA_, &tokenCustom_rVAR_x, 1, NULL},
-    {1, rVAR_HYPERDATA_, &tokenFormat_p_x, 1, &typeHelper_rVAR_},
-    {1, rVAR_PADVALUE_, &tokenFormat_p_x, 1, NULL},
-    {1, rVAR_SEQDATA_, &tokenFormat_p_x, 1, NULL},
+    {1, rVAR_HYPERDATA_, &tokenCustom_rVARs_x, 1, NULL},
+    {1, rVAR_PADVALUE_, &tokenFormat_v_x, 1, &typeHelper_rVAR_},
+    {1, rVAR_SEQDATA_, &tokenFormat_v_x, 1, &typeHelper_rVAR_},
     {1, zVAR_DATA_, &tokenCustom_zVAR_x, 1, NULL},
-    {1, zVAR_HYPERDATA_, &tokenFormat_p_x, 1, &typeHelper_zVAR_},
-    {1, zVAR_PADVALUE_, &tokenFormat_p_x, 1, NULL},
-    {1, zVAR_SEQDATA_, &tokenFormat_p_x, 1, NULL},
+    {1, zVAR_HYPERDATA_, &tokenCustom_zVARs_x, 1, NULL},
+    {1, zVAR_PADVALUE_, &tokenFormat_v_x, 1, &typeHelper_zVAR_},
+    {1, zVAR_SEQDATA_, &tokenFormat_v_x, 1, &typeHelper_zVAR_},
     {1, gENTRY_DATA_, &tokenFormat_llV_x, 3, &tokenHelper_firstToken_},
     {1, rENTRY_DATA_, &tokenFormat_llV_x, 3, &tokenHelper_firstToken_},
     {1, zENTRY_DATA_, &tokenFormat_llV_x, 3, &tokenHelper_firstToken_},

@@ -120,9 +120,6 @@ class variableTable(framework.coerciveDictionary, framework.hashablyUniqueObject
         self._variable = variable
         self._invalid = {}
         dict.__init__(self)
-    def __del__(self):
-        self.notifyDisassociation()
-        dict.__del__(self)
     def __setitem__(self, key, value):
         if key in self:
             dict.__setitem__(self, key, value)
@@ -225,7 +222,9 @@ class archiveTable(framework.coerciveDictionary):
     def __setitem__(self, key, value, fromDisk = False):
         if key in self._variableScopeUsers:
             for user in self._variableScopeUsers[key]:
-                user._invalidate(key)
+                user = user()
+                if user is not None:
+                    user._invalidate(key)
             del self._variableScopeUsers[key]
         if not fromDisk:
             # This logic implements an update to a key value by removing the
@@ -244,7 +243,9 @@ class archiveTable(framework.coerciveDictionary):
         dict.__delitem__(self, key)
         if key in self._variableScopeBlockers:
             for user in self._variableScopeBlockers[key]:
-                user._available(key)
+                user = user()
+                if user is not None:
+                    user._available(key)
             self._variableScopeBlockers.remove(key)
     def _keys(self):
         return self._variableScopeNamesToNumbers.keys()
@@ -261,25 +262,38 @@ class archiveTable(framework.coerciveDictionary):
         return self._variableScopeNamesToNumbers[key]
     def _reserve(self, key, user):
         if key in self:
-            self._variableScopeBlockers.get(key, set()).add(user)
+            # Reservations are performed using weak references.
+            self._variableScopeBlockers.get(key, set()).add(weakref.ref(user))
             return False
         else:
             users = self._variableScopeUsers.get(key, [])
-            if not user in users:
-                users.append(user)
+            found = False
+            for ref in users[:]:
+                deref = ref()
+                if deref is None:
+                    users.remove(ref)
+                elif deref is user:
+                    found = True
+            if not found:
+                users.append(weakref.ref(user))
+                self._variableScopeUsers[key] = users
             return True
     def _relinquish(self, key, user):
-        try:
-            self._variableScopeUsers[key].remove(user)
-            if len(self._variableScopeUsers[key]) == 0:
-                self._variableScopeUsers.remove(key)
-                if key in self._variableScopeNamesToNumbers:
-                    self._deletionNumbers.append(
-                      self._variableScopeNamesToNumbers[key])
-                    self._variableScopeNamesToNumbers.remove(key)
-        except:
-            # Already removed?
-            pass
+        users = self._variableScopeUsers.get(key, [])
+        for ref in users[:]:
+            deref = ref()
+            if deref is None:
+                users.remove(ref)
+            elif deref is user:
+                users.remove(user)
+        if len(users) == 0:
+            self._variableScopeUsers.remove(key)
+            if key in self._variableScopeNamesToNumbers:
+                self._deletionNumbers.append(
+                  self._variableScopeNamesToNumbers[key])
+                self._variableScopeNamesToNumbers.remove(key)
+        else:
+            self._variableScopeUsers[key] = users
     def write(self):
         order = self._deletionNumbers[:]
         order.sort()

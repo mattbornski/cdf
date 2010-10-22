@@ -175,38 +175,48 @@ class record(numpy.ndarray):
                                     [1 for dim in self._variable._dimSizes],
                                 self._variable._tokens['INDEX'],
                                     [0 for dim in self._variable._dimSizes])
-                    try:
-                        (hyper, ) = internal.CDFlib(
-                            internal.GET_,
-                                self._variable._tokens['HYPER'])
-                        self._dehyper([], hyper)
-                    except:
-                        for (index, value) in numpy.ndenumerate(self):
-                            if index is not ():
-                                internal.CDFlib(
-                                    internal.SELECT_,
-                                        self._variable._tokens['INDEX'],
-                                            index)
-                            (value, ) = internal.CDFlib(
-                                internal.GET_,
-                                    self._variable._tokens['DATA'])
-                            self[index] = value
+                    (hyper, ) = internal.CDFlib(
+                        internal.GET_,
+                            self._variable._tokens['HYPER'])
+                    self._dehyper([], hyper)
                     self._placeholder = False
     def _write(self):
         # The variable must have selected itself before calling us.
-        internal.CDFlib(
-            internal.SELECT_,
-                self._variable._tokens['RECORD'],
-                    self._num)
-        for (index, value) in numpy.ndenumerate(self):
-            if index is not ():
+        with self.selection(self) as selection:
+            if selection:
                 internal.CDFlib(
                     internal.SELECT_,
-                        self._variable._tokens['INDEX'],
-                            index)
-            internal.CDFlib(
-                internal.PUT_,
-                    self._variable._tokens['DATA'], value)
+                        self._variable._tokens['RECORD'],
+                            self._num,
+                        self._variable._tokens['RECCOUNT'],
+                            1,
+                        self._variable._tokens['RECINTERVAL'],
+                            1)
+                if self._variable._dimSizes is not None:
+                    internal.CDFlib(
+                        internal.SELECT_,
+                            self._variable._tokens['DIMCOUNTS'],
+                                self._variable._dimSizes,
+                            self._variable._tokens['DIMINTERVALS'],
+                                [1 for dim in self._variable._dimSizes],
+                            self._variable._tokens['INDEX'],
+                                [0 for dim in self._variable._dimSizes])
+#                try:
+#                internal.CDFlib(
+#                    internal.PUT_,
+#                        self._variable._tokens['HYPER'],
+#                            self)
+#                except:
+                if True:
+                    for (index, value) in numpy.ndenumerate(self):
+                        if index is not ():
+                            internal.CDFlib(
+                                internal.SELECT_,
+                                    self._variable._tokens['INDEX'],
+                                        index)
+                        internal.CDFlib(
+                            internal.PUT_,
+                                self._variable._tokens['DATA'], value)
     def indices(self):
         # This is a generator function which will iterate over all
         # indices of this variable.  It is suitable for calls to
@@ -243,12 +253,6 @@ class variable(list):
                 self.extend(value)
             else:
                 self.extend([value])
-    def __del__(self):
-        del self.attr
-        list.__del__(self)
-        internal.CDFlib(
-            internal.CLOSE_,
-                self._tokens['SELECT_VARIABLE'])
 
     # Selection function
     def select(self):

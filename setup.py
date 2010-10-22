@@ -1,15 +1,14 @@
 import setuptools
 import glob
-import os
+#import os
 import os.path
 
-def data_file_candidates(path):
-    return [
-      file[0] for file in
-        [glob.glob(os.path.join(dir[0], '*')) for dir in os.walk(path)]
-      if file
-    ]
-
+#def data_file_candidates(path):
+#    return [
+#      file[0] for file in
+#        [glob.glob(os.path.join(dir[0], '*')) for dir in os.walk(path)]
+#      if file
+#    ]
 
 if __name__ == '__main__':
     # List the source files from the CDF v3.3 distribution.
@@ -110,25 +109,25 @@ if __name__ == '__main__':
     # skeletons, too.
     istp = ['cdf.istp.interface']
 
-    data_dir = os.path.expanduser('~/cdf/')
-    data_files = [
-      # Documentation
-      (os.path.join(data_dir, 'docs'), glob.glob('docs/*')),
-      # Functional tests
-      (os.path.join(data_dir, 'tests'), data_file_candidates('tests')),
-      # Examples
-      (os.path.join(data_dir, 'examples/internal'),
-        ['examples/internal/list-cdf.py',
-        'examples/internal/copy-cdf.py',
-        'examples/internal/new-cdf.py',
-        'examples/internal/test.cdf']),
-      (os.path.join(data_dir, 'examples/pythonic'),
-        ['examples/pythonic/list-cdf.py',
-        'examples/pythonic/copy-cdf.py',
-        'examples/pythonic/new-cdf.py',
-        'examples/pythonic/csv2cdf.py',
-        'examples/pythonic/test.csv',
-        'examples/pythonic/test.cdf'])]
+#    data_dir = os.path.expanduser('~/cdf/')
+#    data_files = [
+#      # Documentation
+#      (os.path.join(data_dir, 'docs'), glob.glob('docs/*')),
+#      # Functional tests
+#      (os.path.join(data_dir, 'tests'), data_file_candidates('tests')),
+#      # Examples
+#      (os.path.join(data_dir, 'examples/internal'),
+#        ['examples/internal/list-cdf.py',
+#        'examples/internal/copy-cdf.py',
+#        'examples/internal/new-cdf.py',
+#        'examples/internal/test.cdf']),
+#      (os.path.join(data_dir, 'examples/pythonic'),
+#        ['examples/pythonic/list-cdf.py',
+#        'examples/pythonic/copy-cdf.py',
+#        'examples/pythonic/new-cdf.py',
+#        'examples/pythonic/csv2cdf.py',
+#        'examples/pythonic/test.csv',
+#        'examples/pythonic/test.cdf'])]
 
     # Invoke the setup code, which will (depending on the command line
     # arguments) build, install, or otherwise tinker with this package

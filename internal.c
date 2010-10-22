@@ -840,9 +840,26 @@ PyObject *tokenFormat_L_x(long one, long two, PyObject *tokens,
     return NULL;
 }
 
-PyObject *tokenFormat_p_x(long one, long two, PyObject *tokens,
+PyObject *tokenFormat_v_x(long one, long two, PyObject *tokens,
     long (*helper)(PyObject *)) {
-    return tokenFormat_l_x(one, two, tokens, helper);
+    if (helper != NULL) {
+        long type = helper(tokens);
+        if (type < 0 || type == CDF_CHAR) {
+            /* String handling has different ideas of "size". */
+            return tokenFormat_s_x(one, two, tokens, helper);
+        } else {
+            PyObject *in_1 = NULL;
+            if (PyArg_ParseTuple(tokens, "O", &in_1)) {
+                void **conv_1 = rebinFromPythonToC(in_1, type);
+                if (check(CDFlib(one, two, conv_1[0], NULL_))) {
+                    free(conv_1);
+                    return Py_None;
+                }
+                free(conv_1);
+            }
+        }
+    }
+    return NULL;
 }
 
 PyObject *tokenFormat_s_x(long one, long two, PyObject *tokens,
@@ -941,82 +958,83 @@ PyObject *tokenFormat_x_l(long one, long two, PyObject *tokens,
     return NULL;
 }
 
-PyObject *tokenCustom_zVAR_V(long one, long two, PyObject *tokens,
-    long (*helper)(PyObject *)) {
-    long i = 0;
+/* Hyper data functions */
+void **allocateHyperDataStorage(int z, long *dims, long n_dims, long size) {
     // Assume the user has selected everything appropriately.  Determine
     // the size and configuration of the memory structure we need based
     // on the selections.
     // The number of dimensions is the same as the number of dimensions in
-    // the variable records plus a dimension if we are retrieving more
-    // than one record at a time.
-    long records = longFromTwoTokens(CONFIRM_, zVAR_RECCOUNT_);
-    long count = longFromTwoTokens(GET_, zVAR_NUMDIMS_);
-    long *dims = alloc(calloc(sizeof(long), count + 1));
+    // the variable records plus a dimension if we are setting or getting
+    // more than one record at a time.
+    long records = longFromTwoTokens(CONFIRM_, (z ? zVAR_RECCOUNT_ : rVARs_RECCOUNT_));
     long majority = longFromTwoTokens(GET_, CDF_MAJORITY_);
     if (majority == ROW_MAJOR) {
-        dims[count] = records;
+        dims[n_dims] = records;
     } else {
         dims[0] = records;
     }
-    if (count > 0) {
-        long *lengths = longsFromTwoTokens(GET_, zVAR_DIMSIZES_);
-        for (i = 0; i < count; i++) {
+    if (n_dims > 0) {
+        long *lengths = longsFromTwoTokens(GET_, (z ? zVAR_DIMSIZES_ : rVARs_DIMSIZES_));
+        long i = 0;
+        for (i = 0; i < n_dims; i++) {
             if (majority == ROW_MAJOR) {
-                dims[count - i - 1] = lengths[i];
+                dims[n_dims - i - 1] = lengths[i];
             } else {
                 dims[i + 1] = lengths[i];
             }
         }
     }
-    long type = typeHelper_zVAR_(NULL);
+    return multiDimensionalArray(dims, n_dims + 1, size);
+}
+
+/* Get zVAR hyperdata */
+PyObject *getHyperData(int z, long one, long two) {
+    long n_dims = longFromTwoTokens(
+      GET_, (z ? zVAR_NUMDIMS_ : rVARs_NUMDIMS_));
+    long *dims = alloc(calloc(sizeof(long), n_dims + 1));
+    long type = (z ? typeHelper_zVAR_(NULL) : typeHelper_rVAR_(NULL));
     long size = getSize(type);
-    void **out_1 = multiDimensionalArray(dims, count + 1, size);
+    void **out_1 = allocateHyperDataStorage(z, dims, n_dims, size);
     if (check(CDFlib(one, two, out_1, NULL_))) {
         // Now we need to convert the buffer into the appropriate structure
         // of arrays within arrays.
         PyObject *conv_1 = NULL;
-        if (count == 0) {
+        if (n_dims == 0) {
             conv_1 = ownedPythonListFromArray(NULL, 0, type);
             PyList_Append(conv_1, castFromCdfToPython(type, out_1));
         } else {
             conv_1 = ownedPythonListOfListsFromArray(
-              out_1, dims, count + 1, type);
+              out_1, dims, n_dims + 1, type);
         }
-        free(out_1);
+        cleanupMultiDimensionalArray(out_1, dims, n_dims);
         return Py_BuildValue("(O)", conv_1);
     }
-    free(out_1);
+    cleanupMultiDimensionalArray(out_1, dims, n_dims);
     return NULL;
 }
 
-PyObject *tokenFormat_x_p(long one, long two, PyObject *tokens,
+PyObject *setHyperData(int z, long one, long two, PyObject *tokens) {
+    return Py_None;
+}
+
+PyObject *tokenCustom_x_rVARs(long one, long two, PyObject *tokens,
     long (*helper)(PyObject *)) {
-    if (helper != NULL) {
-        long type = helper(tokens);
-        if (type < 0) {
-            return tokenFormat_x_s(one, two, tokens, helper);
-        } else {
-            long len = type % TYPE_MOD;
-            type -= len;
-            type /= TYPE_MOD;
-            if (len > 0) {
-                long size = getSize(type);
-                void *out_1 = alloc(calloc(size, len));
-                if (out_1 != NULL) {
-                    if (check(CDFlib(one, two, out_1, NULL_))) {
-                        /* Convert array into Python list. */
-                        PyObject *conv_1
-                          = ownedPythonListFromArray(out_1, len, type);
-                        free(out_1);
-                        return Py_BuildValue("(O)", conv_1);
-                    }
-                    free(out_1);
-                }
-            }
-        }
-    }
-    return NULL;
+    return getHyperData(0, one, two);
+}
+
+PyObject *tokenCustom_x_zVARs(long one, long two, PyObject *tokens,
+    long (*helper)(PyObject *)) {
+    return getHyperData(1, one, two);
+}
+
+PyObject *tokenCustom_rVARs_x(long one, long two, PyObject *tokens,
+    long (*helper)(PyObject *)) {
+    return setHyperData(0, one, two, tokens);
+}
+
+PyObject *tokenCustom_zVARs_x(long one, long two, PyObject *tokens,
+    long (*helper)(PyObject *)) {
+    return setHyperData(1, one, two, tokens);
 }
 
 PyObject *tokenFormat_x_L(long one, long two, PyObject *tokens,
@@ -1403,7 +1421,7 @@ PyObject *CdfFirstTierTokenHandler(
                         /* Borrow a reference from the tuple. */
                         PyObject *item = PySequence_GetItem(
                             output, retCounter);
-                        /* Up the refcount so we now own it. */
+                        /* Up the refn_dims so we now own it. */
                         Py_IncRef(item);
                         /* Pass ownership to the list. */
                         PyList_Append(list, item);
@@ -1587,13 +1605,13 @@ ownedPythonListFromArray(void *array, long len, long type) {
 }
 
 void **
-arrayOfArrayPointers(long count) {
-    if (count > 0) {
-        void **ret = (void **)calloc(count, sizeof(void *));
+arrayOfArrayPointers(long n_dims) {
+    if (n_dims > 0) {
+        void **ret = (void **)calloc(n_dims, sizeof(void *));
 
         if (ret == NULL) {
             printf("Failed to allocate memory for void pointer "
-                "array of size %ld.\n", count);
+                "array of size %ld.\n", n_dims);
             return NULL;
         }
         return ret;
@@ -1601,13 +1619,13 @@ arrayOfArrayPointers(long count) {
     return NULL;
 }
 
-void *array(long count, long size) {
-    if (count > 0) {
-        void *ret = calloc(count, size);
+void *array(long n_dims, long size) {
+    if (n_dims > 0) {
+        void *ret = calloc(n_dims, size);
 
         if (ret == NULL) {
             printf("Failed to allocate memory for array "
-                "of %ld items of %ld size.\n", count, size);
+                "of %ld items of %ld size.\n", n_dims, size);
             return NULL;
         }
         return ret;
@@ -1615,16 +1633,16 @@ void *array(long count, long size) {
     return NULL;
 }
 
-long *arrayOfLongs(long count) {
-    return (long *)array(count, sizeof(long));
+long *arrayOfLongs(long n_dims) {
+    return (long *)array(n_dims, sizeof(long));
 }
 
 void **
-multiDimensionalArray(long *dims, long count, long size) {
+multiDimensionalArray(long *dims, long n_dims, long size) {
     long i;
 
-    if ((dims != NULL) && (dims[0] > 0) && (count > 0)) {
-        if (count > 1) {
+    if ((dims != NULL) && (dims[0] > 0) && (n_dims > 0)) {
+        if (n_dims > 1) {
             void **level = arrayOfArrayPointers(dims[0]);
             if (level == NULL) {
                 printf("Failed to allocate memory for array dimension.\n");
@@ -1632,7 +1650,7 @@ multiDimensionalArray(long *dims, long count, long size) {
             }
             for (i = 0; i < dims[0]; i++) {
                 level[i] = multiDimensionalArray(
-                  (long *)(&(dims[1])), (count - 1), size);
+                  (long *)(&(dims[1])), (n_dims - 1), size);
             }
             return level;
         } else {
@@ -1645,14 +1663,14 @@ multiDimensionalArray(long *dims, long count, long size) {
 }
 
 void
-cleanupMultiDimensionalArray(void **array, long *dims, long count) {
+cleanupMultiDimensionalArray(void **array, long *dims, long n_dims) {
     long i;
 
     if ((array != NULL) && (dims != NULL)) {
-        if (count > 1) {
+        if (n_dims > 1) {
             for (i = 0; i < dims[0]; i++) {
                 cleanupMultiDimensionalArray(
-                    (void **)(&(array[i])), (long *)(&(dims[1])), (count - 1));
+                    (void **)(&(array[i])), (long *)(&(dims[1])), (n_dims - 1));
             }
             free(array);
         } else {
@@ -1662,19 +1680,19 @@ cleanupMultiDimensionalArray(void **array, long *dims, long count) {
 }
 
 PyObject *
-ownedPythonListOfListsFromArray(void **array, long *dims, long count, long type) {
+ownedPythonListOfListsFromArray(void **array, long *dims, long n_dims, long type) {
 
     PyObject *list = NULL;
     PyObject *tmp = NULL;
     long i;
 
     if ((array != NULL) && (dims != NULL)) {
-        if (count > 1) {
+        if (n_dims > 1) {
             list = PyList_New(dims[0]);
             if (list != NULL) {
                 for (i = 0; i < dims[0]; i++) {
                     tmp = ownedPythonListOfListsFromArray(
-                        (void *)(&(array[i])), (long *)(&(dims[1])), (count - 1), type);
+                        (void *)(&(array[i])), (long *)(&(dims[1])), (n_dims - 1), type);
                     if (tmp != NULL) {
                         PyList_SetItem(list, i, tmp);
                     } else {
