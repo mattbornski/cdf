@@ -21,7 +21,7 @@ class entry:
         if isinstance(value, str) or isinstance(value, unicode):
             self._cdfType = internal.CDF_CHAR
             self._numElements = len(value)
-        elif isinstance(value, int):
+        elif isinstance(value, int) or isinstance(value, long):
             self._cdfType = internal.CDF_INT4
             self._numElements = 1
         elif isinstance(value, float):
@@ -81,6 +81,7 @@ class entry:
         else:
             print 'Unknown type for data'
             print value
+            print value.__class__
             print type(value)
             self._cdfType = None
             self._numElements = None

@@ -182,7 +182,10 @@ class variableTable(framework.coerciveDictionary, framework.hashablyUniqueObject
         if archive is not None:
             for key in self.keys():
                 # Verify that the attribute values are coherent.
-                value = entry.entry(self[key], simple = True)
+                value = self[key]
+                if isinstance(value, vAttribute):
+                    value = value._value
+                value = entry.entry(value, simple = True)
                 num = archive.attributes._number(key)
                 if num is not None:
                     value.write(
@@ -290,6 +293,10 @@ class archiveTable(framework.coerciveDictionary):
                     internal.ATTR_)
         for key in self._creationKeys:
             # Verify that the attribute values are coherent.
+            # Unlike the special treatment for vAttributes, gAttributes
+            # provide the list interface and thus the entry coercion works
+            # natively.  TODO Attribute/entry code is very confusing and
+            # should be cleaned up.
             value = entry.entry(self[key])
             # Assign a number.
             (attrNum, ) = internal.CDFlib(

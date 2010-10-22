@@ -71,7 +71,7 @@ class record(numpy.ndarray):
                         raise TypeError('Record values must be arrays ' \
                             + 'or coercable into arrays.')
                 else:
-                    coerce = copy.deepcopy(input_array)
+                    coerce = input_array
             if isinstance(coerce, numpy.ndarray):
                 obj = numpy.asarray(coerce).view(cls)
             else:

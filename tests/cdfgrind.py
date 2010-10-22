@@ -25,14 +25,27 @@ def check_test_suite():
     t.run(tests)
 
 def loop(filename, count=3):
-    times = []
+    readtimes = []
+    writetimes = []
     for i in xrange(0, count):
         start = time.time()
         # Do something stressful
         c = cdf.archive(filename)
-        times.append(time.time() - start)
-        print 'Run #' + str(len(times)) + ': ' + str(times[-1])
-    print 'Average: ' + str(sum(times) / len(times))
+        readtimes.append(time.time() - start)
+        print 'Read #' + str(len(readtimes)) + ': ' + str(readtimes[-1])
+        c2 = cdf.archive('tmp')
+        for key in c:
+            c2[key] = c[key]
+            for attribute in c[key].attributes:
+                c2[key].attributes[attribute] = c[key].attributes[attribute]
+        for attribute in c.attributes:
+            c2.attributes[attribute] = c.attributes[attribute]
+        c2.save()
+        writetimes.append(time.time() - start - readtimes[-1])
+        print 'Write #' + str(len(writetimes)) + ': ' + str(writetimes[-1])
+        os.remove('tmp.cdf')
+    print 'Average read: ' + str(sum(readtimes) / len(readtimes))
+    print 'Average write: ' + str(sum(writetimes) / len(writetimes))
 
 if __name__ == '__main__':
     loop(sys.argv[1])
