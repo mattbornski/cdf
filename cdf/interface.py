@@ -175,20 +175,22 @@ class record(numpy.ndarray):
                                     [1 for dim in self._variable._dimSizes],
                                 self._variable._tokens['INDEX'],
                                     [0 for dim in self._variable._dimSizes])
-                    (hyper, ) = internal.CDFlib(
-                        internal.GET_,
-                            self._variable._tokens['HYPER'])
-                    self._dehyper([], hyper)
-#                    for (index, value) in numpy.ndenumerate(self):
-#                        if index is not ():
-#                            internal.CDFlib(
-#                                internal.SELECT_,
-#                                    self._variable._tokens['INDEX'],
-#                                        index)
-#                        (value, ) = internal.CDFlib(
-#                            internal.GET_,
-#                                self._variable._tokens['DATA'])
-#                        self[index] = value
+                    try:
+                        (hyper, ) = internal.CDFlib(
+                            internal.GET_,
+                                self._variable._tokens['HYPER'])
+                        self._dehyper([], hyper)
+                    except:
+                        for (index, value) in numpy.ndenumerate(self):
+                            if index is not ():
+                                internal.CDFlib(
+                                    internal.SELECT_,
+                                        self._variable._tokens['INDEX'],
+                                            index)
+                            (value, ) = internal.CDFlib(
+                                internal.GET_,
+                                    self._variable._tokens['DATA'])
+                            self[index] = value
                     self._placeholder = False
     def _write(self):
         # The variable must have selected itself before calling us.
