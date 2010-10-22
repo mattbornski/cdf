@@ -148,6 +148,12 @@ class record(numpy.ndarray):
         self._variable = variable
         self._num = num
         self._fill()
+    def _dehyper(self, shape, hyper):
+        if len(hyper) == 1:
+            self[tuple(shape)] = hyper[0]
+        else:
+            for i in xrange(0, len(hyper)):
+                self._dehyper(shape + [i], hyper[i])
     def _fill(self):
         if self._placeholder and self._variable is not None:
             with self.selection(self) as selection:
@@ -172,6 +178,7 @@ class record(numpy.ndarray):
                     (hyper, ) = internal.CDFlib(
                         internal.GET_,
                             self._variable._tokens['HYPER'])
+                    self._dehyper([], hyper)
 #                    for (index, value) in numpy.ndenumerate(self):
 #                        if index is not ():
 #                            internal.CDFlib(
