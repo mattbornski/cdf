@@ -463,8 +463,6 @@ long typeHelper_rVAR_(PyObject *);
 long typeHelper_zVAR_(PyObject *);
 long typeHelper_rVARs_(PyObject *);
 long typeHelper_zVARs_(PyObject *);
-long hyperAllocHelper_rVAR_(PyObject *);
-long hyperAllocHelper_zVAR_(PyObject *);
 long helper_GET_rVARs_NUMDIMS_(PyObject *);
 long helper_GET_zVAR_NUMDIMS_(PyObject *);
 long helper_GET_gENTRY_DATATYPE_(PyObject *);
@@ -602,12 +600,12 @@ static CdfSecondTierToken cdf_internal_token_tables_GET_[] = {
     {1, gENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_gENTRY_DATATYPE_},
     {1, rENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_rENTRY_DATATYPE_},
     {1, rVAR_DATA_, &tokenFormat_x_v, 0,& typeHelper_rVAR_},
-    {1, rVAR_HYPERDATA_, &tokenFormat_x_p, 0, &hyperAllocHelper_rVAR_},
+    {1, rVAR_HYPERDATA_, &tokenFormat_x_p, 0, NULL},
     {1, rVAR_PADVALUE_, &tokenFormat_x_v, 0, &typeHelper_rVAR_},
     {1, rVAR_SEQDATA_, &tokenFormat_x_v, 0, &typeHelper_rVAR_},
     {1, zENTRY_DATA_, &tokenFormat_x_V, 0, &helper_GET_zENTRY_DATATYPE_},
     {1, zVAR_DATA_, &tokenFormat_x_v, 0, &typeHelper_zVAR_},
-    {1, zVAR_HYPERDATA_, &tokenCustom_zVAR_V, 0, &hyperAllocHelper_zVAR_},
+    {1, zVAR_HYPERDATA_, &tokenCustom_zVAR_V, 0, NULL},
     {1, zVAR_PADVALUE_, &tokenFormat_x_v, 0, &typeHelper_zVAR_},
     {1, zVAR_SEQDATA_, &tokenFormat_x_v, 0, &typeHelper_zVAR_},
     {1, LIB_subINCREMENT_, &tokenFormat_x_c, 0, NULL},

@@ -155,25 +155,34 @@ class record(numpy.ndarray):
                     internal.CDFlib(
                         internal.SELECT_,
                             self._variable._tokens['RECORD'],
-                                self._num)
-                    for (index, value) in numpy.ndenumerate(self):
-                        if index is not ():
-                            internal.CDFlib(
-                                internal.SELECT_,
-                                    self._variable._tokens['INDEX'],
-                                        index)
-                        (value, ) = internal.CDFlib(
-                            internal.GET_,
-                                self._variable._tokens['DATA'])
-                        self[index] = value
-                    self._placeholder = False
-                    print self
-                    hyper = internal.CDFlib(
+                                self._num,
+                            self._variable._tokens['RECCOUNT'],
+                                1,
+                            self._variable._tokens['RECINTERVAL'],
+                                1)
+                    if self._variable._dimSizes is not None:
+                        internal.CDFlib(
+                            internal.SELECT_,
+                                self._variable._tokens['DIMCOUNTS'],
+                                    self._variable._dimSizes,
+                                self._variable._tokens['DIMINTERVALS'],
+                                    [1 for dim in self._variable._dimSizes],
+                                self._variable._tokens['INDEX'],
+                                    [0 for dim in self._variable._dimSizes])
+                    (hyper, ) = internal.CDFlib(
                         internal.GET_,
                             self._variable._tokens['HYPER'])
-                    print hyper
-                    import sys
-                    sys.exit(0)
+#                    for (index, value) in numpy.ndenumerate(self):
+#                        if index is not ():
+#                            internal.CDFlib(
+#                                internal.SELECT_,
+#                                    self._variable._tokens['INDEX'],
+#                                        index)
+#                        (value, ) = internal.CDFlib(
+#                            internal.GET_,
+#                                self._variable._tokens['DATA'])
+#                        self[index] = value
+                    self._placeholder = False
     def _write(self):
         # The variable must have selected itself before calling us.
         internal.CDFlib(
@@ -346,15 +355,7 @@ class variable(list):
             internal.CDFlib(
                 internal.SELECT_,
                     self._tokens['SELECT_VARIABLE'],
-                        self._num,
-                    self._tokens['RECCOUNT'],
-                        1,
-                    self._tokens['RECINTERVAL'],
-                        1,
-                    self._tokens['DIMCOUNTS'],
-                        self._dimSizes,
-                    self._tokens['DIMINTERVALS'],
-                        tuple([1 for dim in self._dimSizes]))
+                        self._num)
             if self._numRecords is not None:
                 for i in xrange(0, self._numRecords):
                     rec = record(variable = self, num = i)

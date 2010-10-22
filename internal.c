@@ -612,9 +612,10 @@ long *longsFromTwoTokens(long one, long two) {
     if (output != NULL) {
         if (PyTuple_Check(output)) {
             int i = 0;
-            result = alloc(calloc(PyTuple_Size(output), sizeof(long)));
-            for (i = 0; i < PyTuple_Size(output); i++) {
-                result[i] = PyLong_AsLong(PyTuple_GetItem(output, i));
+            PyObject *list = PyTuple_GetItem(output, 0);
+            result = alloc(calloc(PyList_Size(list), sizeof(long)));
+            for (i = 0; i < PyList_Size(list); i++) {
+                result[i] = PyLong_AsLong(PyList_GetItem(list, i));
             }
         }
         Py_DecRef(output);
@@ -623,11 +624,20 @@ long *longsFromTwoTokens(long one, long two) {
 }
 
 long longFromTwoTokens(long one, long two) {
-    long ret;
-    long *out = longsFromTwoTokens(one, two);
-    ret = out[0];
-    free(out);
-    return ret;
+    PyObject *input = PyTuple_New(3);
+    PyTuple_SetItem(input, 0, PyLong_FromLong(one));
+    PyTuple_SetItem(input, 1, PyLong_FromLong(two));
+    PyTuple_SetItem(input, 2, PyLong_FromLong(NULL_));
+    PyObject *output = cdf_internal_CDFlib(NULL, input);
+    Py_DecRef(input);
+    long result = -1;
+    if (output != NULL) {
+        if (PyTuple_Check(output)) {
+            result = PyLong_AsLong(PyTuple_GetItem(output, 0));
+        }
+        Py_DecRef(output);
+    }
+    return result;
 }
 
 /* Perform a GET_ query with the given token and return a long result. */
@@ -751,16 +761,6 @@ long typeHelper_rVAR_(PyObject *tokens) {
 
 long typeHelper_zVAR_(PyObject *tokens) {
     return getToken(zVAR_DATATYPE_);
-}
-
-/* Determine how much memory must be allocated for the current
- * selection, allocate it, and cast it to a long. */
-long hyperAllocHelper_rVAR_(PyObject *tokens) {
-    return typeHelper_rVAR_(tokens);
-}
-
-long hyperAllocHelper_zVAR_(PyObject *tokens) {
-    return typeHelper_zVAR_(tokens);
 }
 
 /* Look up how many dimensions rVariables in the current
@@ -951,32 +951,37 @@ PyObject *tokenCustom_zVAR_V(long one, long two, PyObject *tokens,
     // the variable records plus a dimension if we are retrieving more
     // than one record at a time.
     long records = longFromTwoTokens(CONFIRM_, zVAR_RECCOUNT_);
-    long record = (records > 1 ? 1 : 0);
     long count = longFromTwoTokens(GET_, zVAR_NUMDIMS_);
-    long *dims = alloc(calloc(sizeof(long), count + record));
-    if (record) {
+    long *dims = alloc(calloc(sizeof(long), count + 1));
+    long majority = longFromTwoTokens(GET_, CDF_MAJORITY_);
+    if (majority == ROW_MAJOR) {
+        dims[count] = records;
+    } else {
         dims[0] = records;
     }
     if (count > 0) {
         long *lengths = longsFromTwoTokens(GET_, zVAR_DIMSIZES_);
-        long *intervals = longsFromTwoTokens(CONFIRM_, zVAR_DIMINTERVALS_);
         for (i = 0; i < count; i++) {
-            dims[i + record] = (lengths[i] > 0 ? lengths[i] : 1);
+            if (majority == ROW_MAJOR) {
+                dims[count - i - 1] = lengths[i];
+            } else {
+                dims[i + 1] = lengths[i];
+            }
         }
     }
     long type = typeHelper_zVAR_(NULL);
     long size = getSize(type);
-    void **out_1 = multiDimensionalArray(dims, count + record, size);
+    void **out_1 = multiDimensionalArray(dims, count + 1, size);
     if (check(CDFlib(one, two, out_1, NULL_))) {
         // Now we need to convert the buffer into the appropriate structure
         // of arrays within arrays.
         PyObject *conv_1 = NULL;
-        if (count + record == 0) {
+        if (count == 0) {
             conv_1 = ownedPythonListFromArray(NULL, 0, type);
             PyList_Append(conv_1, castFromCdfToPython(type, out_1));
         } else {
             conv_1 = ownedPythonListOfListsFromArray(
-              out_1, dims, count + record, type);
+              out_1, dims, count + 1, type);
         }
         free(out_1);
         return Py_BuildValue("(O)", conv_1);
