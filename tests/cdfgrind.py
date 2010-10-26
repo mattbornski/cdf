@@ -79,4 +79,4 @@ def loop(filename, count=3):
     print '  ' + str(monitor.usage() - baseline)
 
 if __name__ == '__main__':
-    loop(sys.argv[1])
+    loop(sys.argv[1] if len(sys.argv) > 1 else os.path.splitext(__file__)[0] + '.cdf')

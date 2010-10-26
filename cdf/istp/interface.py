@@ -407,14 +407,21 @@ def autofill(arc, skt):
         shutil.copy(skt, sktfile)
         sys.path.append(dir)
         import sktfile
+
+        # Fill in static variables
+        for var in sktfile.skeleton['variables']:
+            if var not in arc:
+                arc[var] = sktfile.skeleton['variables'][var]
+
+        # Fill in global attributes
         required = attributes['global']['required'].keys()
         retry = []
         while len(required) > 0:
             for attr in required:
                 try:
                     if attr not in arc.attributes:
-                        if attr in sktfile.skeleton[0]:
-                            arc.attributes[attr] = sktfile.skeleton[0][attr]
+                        if attr in sktfile.skeleton['attributes']['global']:
+                            arc.attributes[attr] = sktfile.skeleton['attributes']['global'][attr]
                         else:
                             attributes['global']['required'][attr](arc, attr)
                     if attr not in arc.attributes:
@@ -436,6 +443,8 @@ def autofill(arc, skt):
                   + 'global attr "' + str(retry[0]) + '"')
             required = retry
             retry = []
+
+        # Fill in per-variable attributes
         for var in arc:
             required = attributes['var']['required'].keys()
             retry = []
@@ -443,10 +452,10 @@ def autofill(arc, skt):
                 for attr in required:
                     try:
                         if attr not in arc[var].attributes:
-                            if var in sktfile.skeleton[1] \
-                              and attr in sktfile.skeleton[1][var]:
+                            if var in sktfile.skeleton['attributes']['variable'] \
+                              and attr in sktfile.skeleton['attributes']['variable'][var]:
                                 arc[var].attributes[attr] \
-                                  = sktfile.skeleton[1][var][attr]
+                                  = sktfile.skeleton['attributes']['variable'][var][attr]
                             else:
                                 attributes['var']['required'][attr](
                                   arc, attr, var)
