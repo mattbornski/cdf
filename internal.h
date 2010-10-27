@@ -366,6 +366,10 @@ PyObject *ownedPythonListFromArray(void *array, long len, long type);
 void **multiDimensionalArray(long *dims, long count, long size);
 void cleanupMultiDimensionalArray(void **array, long *dims, long count);
 PyObject *ownedPythonListOfListsFromArray(void **array, long *dims, long count, long type);
+void hyperDataFromOwnedPythonSequenceTrees(
+  void **buffer, PyObject *data, long *dims, long n_dims, long type);
+PyObject *getHyperData(int z, long one, long two);
+PyObject *setHyperData(int z, long one, long two, PyObject *tokens);
 
 
 

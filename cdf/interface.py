@@ -169,7 +169,7 @@ class record(numpy.ndarray):
                 ret.append(self._hyper(shape[1:], index + [i]))
             return ret
         else:
-            return [self[tuple(index)]]
+            return self[tuple(index)]
     def _fill(self):
         if self._placeholder and self._variable is not None:
             with self.selection(self) as selection:
@@ -217,21 +217,13 @@ class record(numpy.ndarray):
                                 [1 for dim in self._variable._dimSizes],
                             self._variable._tokens['INDEX'],
                                 [0 for dim in self._variable._dimSizes])
-# Hyper writes are not yet ready for prime time.
-#                hyper = self._hyper(list(self.shape), [])
-#                internal.CDFlib(
-#                    internal.PUT_,
-#                        self._variable._tokens['HYPER'],
-#                            hyper)
-                for (index, value) in numpy.ndenumerate(self):
-                    if index is not ():
-                        internal.CDFlib(
-                            internal.SELECT_,
-                                self._variable._tokens['INDEX'],
-                                    index)
-                    internal.CDFlib(
-                        internal.PUT_,
-                            self._variable._tokens['DATA'], value)
+                hyper = self._hyper(list(self.shape), [])
+                if not isinstance(hyper, list):
+                    hyper = [hyper]
+                internal.CDFlib(
+                    internal.PUT_,
+                        self._variable._tokens['HYPER'],
+                            hyper)
     def indices(self):
         # This is a generator function which will iterate over all
         # indices of this variable.  It is suitable for calls to

@@ -980,7 +980,8 @@ void **allocateHyperDataStorage(int z, long *dims, long n_dims, long size) {
     // The number of dimensions is the same as the number of dimensions in
     // the variable records plus a dimension if we are setting or getting
     // more than one record at a time.
-    long records = longFromTwoTokens(CONFIRM_, (z ? zVAR_RECCOUNT_ : rVARs_RECCOUNT_));
+    long records = longFromTwoTokens(
+      CONFIRM_, (z ? zVAR_RECCOUNT_ : rVARs_RECCOUNT_));
     long majority = longFromTwoTokens(GET_, CDF_MAJORITY_);
     if (majority == ROW_MAJOR) {
         dims[n_dims] = records;
@@ -988,7 +989,8 @@ void **allocateHyperDataStorage(int z, long *dims, long n_dims, long size) {
         dims[0] = records;
     }
     if (n_dims > 0) {
-        long *lengths = longsFromTwoTokens(GET_, (z ? zVAR_DIMSIZES_ : rVARs_DIMSIZES_));
+        long *lengths = longsFromTwoTokens(
+          GET_, (z ? zVAR_DIMSIZES_ : rVARs_DIMSIZES_));
         long i = 0;
         for (i = 0; i < n_dims; i++) {
             if (majority == ROW_MAJOR) {
@@ -1030,16 +1032,14 @@ PyObject *getHyperData(int z, long one, long two) {
 void hyperDataFromOwnedPythonSequenceTrees(
   void **buffer, PyObject *data, long *dims, long n_dims, long type) {
     if ((n_dims <= 1) && (type != CDF_CHAR)) {
-        long i = 0;
-        for (i = 0; i < PyList_Size(data); i++) {
-            void **tmp = rebinFromPythonToC(PyList_GetItem(PyList_GetItem(data, i), 0), type);
-            memcpy(buffer[i], tmp, getSize(type));
-            free(tmp);
-        }
+        void **tmp = rebinFromPythonToC(data, type);
+        memcpy(buffer, tmp, getSize(type) * PyList_Size(data));
+        free(tmp);
     } else if (n_dims > 0) {
         long i = 0;
         for (i = 0; i < PyList_Size(data); i++) {        
-            hyperDataFromOwnedPythonSequenceTrees(buffer[i], PyList_GetItem(data, i), dims + 1, n_dims - 1, type);
+            hyperDataFromOwnedPythonSequenceTrees(
+              buffer[i], PyList_GetItem(data, i), dims + 1, n_dims - 1, type);
         }
     } else {
         if (PyList_Check(data) && (PyList_Size(data) == 1)) {
@@ -1058,12 +1058,10 @@ void hyperDataFromOwnedPythonSequenceTrees(
                 long len;
                 if (type == CDF_CHAR) {
                     len = strlen((const char *)tmp) + 1;
-                    memcpy(buffer, tmp, len);
                 } else {
                     len = getSize(type) * dims[0];
-                    ((long *)buffer)[0] = ((long *)tmp)[0];
-//                    memcpy(buffer, &tmp, len);
                 }
+                memcpy(buffer, tmp, len);
                 free(tmp);
             }
         }
@@ -1079,8 +1077,8 @@ PyObject *setHyperData(int z, long one, long two, PyObject *tokens) {
         long type = (z ? typeHelper_zVAR_(NULL) : typeHelper_rVAR_(NULL));
         long size = getSize(type);
         void **conv_1 = allocateHyperDataStorage(z, dims, n_dims, size);
-        hyperDataFromOwnedPythonSequenceTrees(conv_1, in_1, dims, n_dims, type);
-        //void *conv_1 = alloc(allocatedArrayFromOwnedPythonSequence(in_1));
+        hyperDataFromOwnedPythonSequenceTrees(
+          conv_1, in_1, dims, n_dims, type);
         if (conv_1 != NULL) {
             if (check(CDFlib(one, two, conv_1, NULL_))) {
                 cleanupMultiDimensionalArray(conv_1, dims, n_dims);

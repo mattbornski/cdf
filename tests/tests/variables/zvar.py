@@ -5,14 +5,16 @@ import os
 import cdf
 
 def test():
-    a = cdf.archive('a')
-    a['foo'] = cdf.zVariable([1, 2, 3])
-    a.save('a')
+    test = cdf.archive('test')
+    test['foo'] = cdf.zVariable([1, 2, 3])
+    test['bar'] = cdf.zVariable(['a', 'b', 'see'])
+    test.save()
 
-    b = cdf.archive('a')
-    print b
+    test2 = cdf.archive('test')
+    print test2['foo']
+    print test2['bar']
 
-    os.remove('a.cdf')
+    os.remove('test.cdf')
 
 if __name__ == '__main__':
     test()
