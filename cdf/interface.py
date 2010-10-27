@@ -96,7 +96,9 @@ class record(numpy.ndarray):
         dup._placeholder = None
         return dup
     def __setitem__(self, key, value):
-        if isinstance(key, tuple) and len(key) > 0:
+        if isinstance(value, list) and len(value) == 1:
+            self[key] = value[0]
+        elif isinstance(key, tuple) and len(key) > 0:
             if len(key) > 1:
                 self[key[0]][key[1:]] = value
             else:
@@ -157,8 +159,8 @@ class record(numpy.ndarray):
         self._num = num
         self._fill()
     def _dehyper(self, shape, hyper):
-        if len(hyper) == 1:
-            self[tuple(shape)] = hyper[0]
+        if len(shape) == len(self.shape):
+            self[tuple(shape)] = hyper
         else:
             for i in xrange(0, len(hyper)):
                 self._dehyper(shape + [i], hyper[i])

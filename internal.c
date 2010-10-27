@@ -679,6 +679,10 @@ long getSize(long type) {
     return result;
 }
 
+long getNumber(int z) {
+    return longFromTwoTokens(GET_, (z ? zVAR_NUMELEMS_ : rVAR_NUMELEMS_));
+}
+
 
 
 /**
@@ -973,59 +977,77 @@ PyObject *tokenFormat_x_l(long one, long two, PyObject *tokens,
 }
 
 /* Hyper data functions */
-void **allocateHyperDataStorage(int z, long *dims, long n_dims, long size) {
+void **allocateHyperDataStorage(int z, long **dims, long *n_dims, long type) {
     // Assume the user has selected everything appropriately.  Determine
     // the size and configuration of the memory structure we need based
     // on the selections.
     // The number of dimensions is the same as the number of dimensions in
     // the variable records plus a dimension if we are setting or getting
     // more than one record at a time.
+    long dimensionCount = *n_dims;
     long records = longFromTwoTokens(
       CONFIRM_, (z ? zVAR_RECCOUNT_ : rVARs_RECCOUNT_));
     long majority = longFromTwoTokens(GET_, CDF_MAJORITY_);
-    if (majority == ROW_MAJOR) {
-        dims[n_dims] = records;
-    } else {
-        dims[0] = records;
+    long dimensionOffset = 0;
+    long recordDimension = ((majority == ROW_MAJOR) ? *n_dims : 0);
+    *n_dims += ((records > 1) ? 1 : 0);
+    long stringDimension = ((majority == ROW_MAJOR) ? 0 : *n_dims);
+    *n_dims += ((type == CDF_CHAR) ? 1 : 0);
+    *dims = alloc(calloc(sizeof(long), *n_dims));
+    long size = getSize(type);
+    if (records > 1) {
+        dims[recordDimension] = records;
+        dimensionOffset += (recordDimension == dimensionOffset);
     }
-    if (n_dims > 0) {
+    if (type == CDF_CHAR) {
+        *dims[stringDimension] = 1;
+        size *= getNumber(z);
+        dimensionOffset += (stringDimension == dimensionOffset);
+    }
+    if (dimensionCount > 0) {
         long *lengths = longsFromTwoTokens(
           GET_, (z ? zVAR_DIMSIZES_ : rVARs_DIMSIZES_));
         long i = 0;
-        for (i = 0; i < n_dims; i++) {
+        for (i = 0; i < dimensionCount; i++) {
             if (majority == ROW_MAJOR) {
-                dims[n_dims - i - 1] = lengths[i];
+                *dims[dimensionCount - i - 1 + dimensionOffset] = lengths[i];
             } else {
-                dims[i + 1] = lengths[i];
+                *dims[i + 1 + dimensionOffset] = lengths[i];
             }
         }
+        free(lengths);
     }
-    return multiDimensionalArray(dims, n_dims + 1, size);
+    return multiDimensionalArray(*dims, *n_dims, size);
 }
 
 /* Get zVAR hyperdata */
 PyObject *getHyperData(int z, long one, long two) {
     long n_dims = longFromTwoTokens(
       GET_, (z ? zVAR_NUMDIMS_ : rVARs_NUMDIMS_));
-    long *dims = alloc(calloc(sizeof(long), n_dims + 1));
+    long *dims = NULL;
     long type = (z ? typeHelper_zVAR_(NULL) : typeHelper_rVAR_(NULL));
-    long size = getSize(type);
-    void **out_1 = allocateHyperDataStorage(z, dims, n_dims, size);
-    if (check(CDFlib(one, two, out_1, NULL_))) {
-        // Now we need to convert the buffer into the appropriate structure
-        // of arrays within arrays.
-        PyObject *conv_1 = NULL;
-        if (n_dims == 0) {
-            conv_1 = ownedPythonListFromArray(NULL, 0, type);
-            PyList_Append(conv_1, castFromCdfToPython(type, out_1));
-        } else {
-            conv_1 = ownedPythonListOfListsFromArray(
-              out_1, dims, n_dims + 1, type);
+    void **out_1 = allocateHyperDataStorage(z, &dims, &n_dims, type);
+    if (dims != NULL) {
+        if (out_1 != NULL) {
+            if (check(CDFlib(one, two, out_1, NULL_))) {
+                // Now we need to convert the buffer into the appropriate structure
+                // of arrays within arrays.
+                PyObject *conv_1 = NULL;
+                if (n_dims == 0) {
+                    conv_1 = ownedPythonListFromArray(NULL, 0, type);
+                    PyList_Append(conv_1, castFromCdfToPython(type, out_1));
+                } else {
+                    conv_1 = ownedPythonListOfListsFromArray(
+                      out_1, dims, n_dims, type);
+                }
+                cleanupMultiDimensionalArray(out_1, dims, n_dims);
+                free(dims);
+                return Py_BuildValue("(O)", conv_1);
+            }
+            cleanupMultiDimensionalArray(out_1, dims, n_dims);
         }
-        cleanupMultiDimensionalArray(out_1, dims, n_dims);
-        return Py_BuildValue("(O)", conv_1);
+        free(dims);
     }
-    cleanupMultiDimensionalArray(out_1, dims, n_dims);
     return NULL;
 }
 
@@ -1035,7 +1057,7 @@ void hyperDataFromOwnedPythonSequenceTrees(
         void **tmp = rebinFromPythonToC(data, type);
         memcpy(buffer, tmp, getSize(type) * PyList_Size(data));
         free(tmp);
-    } else if (n_dims > 0) {
+    } else if (n_dims > (type == CDF_CHAR ? 1 : 0)) {
         long i = 0;
         for (i = 0; i < PyList_Size(data); i++) {        
             hyperDataFromOwnedPythonSequenceTrees(
@@ -1073,18 +1095,21 @@ PyObject *setHyperData(int z, long one, long two, PyObject *tokens) {
     if (PyArg_ParseTuple(tokens, "O", &in_1)) {
         long n_dims = longFromTwoTokens(
           GET_, (z ? zVAR_NUMDIMS_ : rVARs_NUMDIMS_));
-        long *dims = alloc(calloc(sizeof(long), n_dims + 1));
+        long *dims = NULL;
         long type = (z ? typeHelper_zVAR_(NULL) : typeHelper_rVAR_(NULL));
-        long size = getSize(type);
-        void **conv_1 = allocateHyperDataStorage(z, dims, n_dims, size);
-        hyperDataFromOwnedPythonSequenceTrees(
-          conv_1, in_1, dims, n_dims, type);
-        if (conv_1 != NULL) {
-            if (check(CDFlib(one, two, conv_1, NULL_))) {
+        void **conv_1 = allocateHyperDataStorage(z, &dims, &n_dims, type);
+        if (dims != NULL) {
+            hyperDataFromOwnedPythonSequenceTrees(
+              conv_1, in_1, dims, n_dims, type);
+            if (conv_1 != NULL) {
+                if (check(CDFlib(one, two, conv_1, NULL_))) {
+                    cleanupMultiDimensionalArray(conv_1, dims, n_dims);
+                    free(dims);
+                    return Py_None;
+                }
                 cleanupMultiDimensionalArray(conv_1, dims, n_dims);
-                return Py_None;
             }
-            cleanupMultiDimensionalArray(conv_1, dims, n_dims);
+            free(dims);
         }
     }
     return NULL;
@@ -1682,77 +1707,56 @@ ownedPythonListFromArray(void *array, long len, long type) {
 }
 
 void **
-arrayOfArrayPointers(long n_dims) {
-    if (n_dims > 0) {
-        void **ret = (void **)calloc(n_dims, sizeof(void *));
-
-        if (ret == NULL) {
-            printf("Failed to allocate memory for void pointer "
-                "array of size %ld.\n", n_dims);
-            return NULL;
-        }
-        return ret;
+arrayOfArrayPointers(long count) {
+    if (count > 0) {
+        return alloc(calloc(count, sizeof(void *)));
     }
     return NULL;
 }
 
-void *array(long n_dims, long size) {
-    if (n_dims > 0) {
-        void *ret = calloc(n_dims, size);
-
-        if (ret == NULL) {
-            printf("Failed to allocate memory for array "
-                "of %ld items of %ld size.\n", n_dims, size);
-            return NULL;
-        }
-        return ret;
+void *allocateArray(long count, long size) {
+    if ((count > 0) && (size > 0)) {
+        return alloc(calloc(count, size));
     }
     return NULL;
 }
 
-long *arrayOfLongs(long n_dims) {
-    return (long *)array(n_dims, sizeof(long));
+long *arrayOfLongs(long count) {
+    return (long *)allocateArray(count, sizeof(long));
 }
 
 void **
 multiDimensionalArray(long *dims, long n_dims, long size) {
     long i;
 
-    if ((dims != NULL) && (dims[0] > 0) && (n_dims > 0)) {
-        if (n_dims > 1) {
-            void **level = arrayOfArrayPointers(dims[0]);
-            if (level == NULL) {
-                printf("Failed to allocate memory for array dimension.\n");
-                return NULL;
-            }
+    void **ret = NULL;
+    if (n_dims > 1) {
+        ret = arrayOfArrayPointers(dims[0]);
+        if (ret != NULL) {
             for (i = 0; i < dims[0]; i++) {
-                level[i] = multiDimensionalArray(
+                ret[i] = multiDimensionalArray(
                   (long *)(&(dims[1])), (n_dims - 1), size);
             }
-            return level;
-        } else {
-            return (void **)array(dims[0], size);
         }
-    } else if (size > 0) {
-        return alloc(calloc(size, 1));
+    } else {
+        ret = (void **)allocateArray((n_dims > 0 ? dims[0] : 1), size);
     }
-    return NULL;
+    return ret;
 }
 
 void
 cleanupMultiDimensionalArray(void **array, long *dims, long n_dims) {
     long i;
 
-    if ((array != NULL) && (dims != NULL)) {
+    if (array != NULL) {
         if (n_dims > 1) {
             for (i = 0; i < dims[0]; i++) {
                 cleanupMultiDimensionalArray(
-                    (void **)(&(array[i])), (long *)(&(dims[1])), (n_dims - 1));
+                  array + i * sizeof(void **),
+                  (long *)(&(dims[1])), (n_dims - 1));
             }
-            free(array);
-        } else {
-            free((long *)array);
         }
+        free(array);
     }
 }
 
