@@ -134,7 +134,7 @@ if __name__ == '__main__':
     # on this system.
     setuptools.setup(
       name = 'CDF',
-      version = '0.29',
+      version = '0.30',
       description = 'This package handles files in NASA Common Data Format',
       author = 'Matt Born',
       author_email = 'mattborn@ssl.berkeley.edu',

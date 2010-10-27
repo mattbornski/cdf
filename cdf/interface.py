@@ -65,17 +65,25 @@ class record(numpy.ndarray):
                     # be an n-dimensional array?
                     try:
                         placeholder = False
-                        coerce = numpy.asarray(input_array).view(cls)
+                        coerce = numpy.asarray(input_array)
                     except TypeError:
                         coerce = None
                         raise TypeError('Record values must be arrays ' \
                             + 'or coercable into arrays.')
                 else:
                     coerce = input_array
-            if isinstance(coerce, numpy.ndarray):
-                obj = numpy.asarray(coerce).view(cls)
-            else:
-                obj = numpy.asarray(numpy.zeros(shape = ())).view(cls)
+            if not isinstance(coerce, numpy.ndarray):
+                coerce = numpy.asarray(numpy.zeros(shape = ())).view(cls)
+            obj = coerce.view(cls)
+            # HACK TODO Force int32 for integer types.  Numpy defaults
+            # to int64 when you assign plain boring integers to it on
+            # 64 bit machines, but the type unification code I have in
+            # place unfortunately unifies int64s to float64s because
+            # that's the only 64 bit type supported in CDF.  I'm not
+            # sure what issues this will cause yet, but I bet it won't
+            # be pretty somewhere down the line.
+            if obj.dtype == numpy.int64:
+                obj = numpy.asarray(obj, dtype = numpy.int32).view(cls)
         obj._num = num
         obj._variable = variable
         obj._placeholder = placeholder
@@ -142,7 +150,7 @@ class record(numpy.ndarray):
         if (self.shape is ()):
             return repr(self[()])
         else:
-            return numpy.ndarray.__repr__(self)
+            return repr(self.tolist())
     # If there is only one value, it is not nice to make people have to
     # figure out how to index it.
     # TODO There are many more methods like this.  It would be nice to
