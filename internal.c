@@ -25,9 +25,84 @@ static PyObject *cdf_internal_CDFlib(PyObject *self, PyObject *args) {
         PyObject *type = NULL, *value = NULL, *traceback = NULL;
         /* Clean slate before processing. */
         PyErr_Fetch(&type, &value, &traceback);
+
+
         /* Process the sequence of tokens through the token->function
          * tables I've created for the internal interface. */
         ret = CdfFirstTierTokenHandler(args, CdfAPITokens);
+
+
+        if (!PyErr_Occurred()) {
+            PyErr_Restore(type, value, traceback);
+            return ret;
+        } else {
+            Py_XDECREF(type);
+            Py_XDECREF(value);
+            Py_XDECREF(traceback);
+            Py_XDECREF(ret);
+            return NULL;
+        }
+    } else {
+        return NULL;
+    }
+}
+
+
+
+/**
+ * The EPOCH utility functions.
+ */
+static PyObject *cdf_internal_computeEPOCH(PyObject *self, PyObject *args) {
+    if (PySequence_Check(args)) {
+        PyObject *ret = NULL;
+        PyObject *type = NULL, *value = NULL, *traceback = NULL;
+        /* Clean slate before processing. */
+        PyErr_Fetch(&type, &value, &traceback);
+
+
+        long in_1, in_2, in_3, in_4, in_5, in_6, in_7;
+        if (PyArg_ParseTuple(args, "lllllll",
+          &in_1, &in_2, &in_3, &in_4, &in_5, &in_6, &in_7)) {
+            double out_1 = computeEPOCH(
+              in_1, in_2, in_3, in_4, in_5, in_6, in_7);
+            ret = Py_BuildValue("(d)", out_1);
+        }
+
+
+        if (!PyErr_Occurred()) {
+            PyErr_Restore(type, value, traceback);
+            return ret;
+        } else {
+            Py_XDECREF(type);
+            Py_XDECREF(value);
+            Py_XDECREF(traceback);
+            Py_XDECREF(ret);
+            return NULL;
+        }
+    } else {
+        return NULL;
+    }
+}
+
+static PyObject *cdf_internal_EPOCHbreakdown(PyObject *self, PyObject *args) {
+    if (PySequence_Check(args)) {
+        PyObject *ret = NULL;
+        PyObject *type = NULL, *value = NULL, *traceback = NULL;
+        /* Clean slate before processing. */
+        PyErr_Fetch(&type, &value, &traceback);
+
+
+        double in_1;
+        long out_1, out_2, out_3, out_4, out_5, out_6, out_7;
+        if (PyArg_ParseTuple(args, "d", &in_1)) {
+            EPOCHbreakdown(
+              in_1, 
+              &out_1, &out_2, &out_3, &out_4, &out_5, &out_6, &out_7);
+            ret = Py_BuildValue("(lllllll)",
+              out_1, out_2, out_3, out_4, out_5, out_6, out_7);
+        }
+
+
         if (!PyErr_Occurred()) {
             PyErr_Restore(type, value, traceback);
             return ret;
@@ -51,8 +126,10 @@ static PyObject *cdf_internal_CDFlib(PyObject *self, PyObject *args) {
  * the initialization must register this table.
  **/
 static PyMethodDef CdfInternalMethods[] = {
-    {"CDFlib", cdf_internal_CDFlib, METH_VARARGS, "CDF internal API"},
-    {NULL, NULL, 0, NULL}
+  {"CDFlib", cdf_internal_CDFlib, METH_VARARGS, "CDF internal API"},
+  {"computeEPOCH", cdf_internal_computeEPOCH, METH_VARARGS, ""},
+  {"EPOCHbreakdown", cdf_internal_EPOCHbreakdown, METH_VARARGS, ""},
+  {NULL, NULL, 0, NULL}
 };
 
 /* Define initialization for this module. */
@@ -996,7 +1073,7 @@ void **allocateHyperDataStorage(int z, long **dims, long *n_dims, long type) {
     *dims = alloc(calloc(sizeof(long), *n_dims));
     long size = getSize(type);
     if (records > 1) {
-        dims[recordDimension] = records;
+        *dims[recordDimension] = records;
         dimensionOffset += (recordDimension == dimensionOffset);
     }
     if (type == CDF_CHAR) {

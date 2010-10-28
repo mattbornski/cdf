@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Stock Python modules
+import datetime
 
 # Third-party modules
 import numpy
@@ -8,13 +9,64 @@ import numpy
 # cdf extension modules
 from . import internal
 
+# TODO The commented out functions all through here are various attempts
+# to break down the walls of numpy, which prevents me from overriding or
+# properly subclassing dtype.  I would like to be able to store "epoch"
+# type values as float64s internally, which they are, but display them
+# to the user as ISO date strings and convert back and forth from datetime
+# objects and look up the CDF equivalent as CDF_EPOCH.  Unfortunately none
+# of these methods or combinations of them will allow me to create a numpy
+# ndarray whose dtype has any relationship to epoch; instead, it reverts to
+# float64.  I will now have to dump special flags in the record structure
+# instead, which is not so much fun.
+
+#def force_attr(key, value):
+#    def ret(obj, query):
+#        if query == key:
+#            return value
+#        else:
+#            return obj.__getattribute__(query)
+
 # TODO Develop a numpy dtype that properly encodes the complexities and
 # precision of CDF EPOCH and EPOCH16 types.
 class epoch(numpy.float64):
-    pass
+    def to_datetime(self):
+        (year, month, day, hour, minute, second, millisecond) \
+          = internal.EPOCHbreakdown(self)
+        microsecond = millisecond * 1000
+        return datetime.datetime(
+          year, month, day, hour, minute, second, microsecond)
+    @staticmethod
+    def from_datetime(value):
+        return epoch(internal.computeEPOCH(
+          value.year, value.month, value.day,
+          value.hour, value.minute, value.second, value.microsecond / 1000)[0])
+    def __str__(self):
+        return self.to_datetime().isoformat()
+    def __repr__(self):
+        return str(self)
+
+#class epoch:
+#    __type = numpy.dtype(_epoch)
+#    def __getattr__(self, key):
+#        if key == 'type':
+#            return _epoch
+#        else:
+#            return __cls[key]
+
+#class epoch(_epoch):
+#    type = _epoch
+#    def __init__(self):
+#        return numpy.dtype.__init__(self, numpy.float64)
+#epoch = epoch_wrap(numpy.dtype(_epoch))
+#epoch.__getattribute__ = force_attr('type', _epoch)
+#object.__setattr__(epoch, 'type', _epoch)
 
 class epoch16(epoch):
     pass
+
+#epoch16 = numpy.dtype(_epoch16)
+#epoch16.type = _epoch16
 
 # Type conversion lookups
 _typeConversions = {

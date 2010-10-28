@@ -53,6 +53,7 @@ class record(numpy.ndarray):
         # This flag will help guide the record as to whether or not
         # it needs to look up actual values from the archive on disk.
         placeholder = True
+        epoch_type = False
         if variable is not None:
             obj = numpy.asarray(numpy.zeros(
                 shape = variable._dimSizes,
@@ -73,8 +74,7 @@ class record(numpy.ndarray):
                 else:
                     coerce = input_array
             if not isinstance(coerce, numpy.ndarray):
-                coerce = numpy.asarray(numpy.zeros(shape = ())).view(cls)
-            obj = coerce.view(cls)
+                coerce = numpy.zeros(shape = ()).view(type = cls)
             # HACK TODO Force int32 for integer types.  Numpy defaults
             # to int64 when you assign plain boring integers to it on
             # 64 bit machines, but the type unification code I have in
@@ -82,15 +82,29 @@ class record(numpy.ndarray):
             # that's the only 64 bit type supported in CDF.  I'm not
             # sure what issues this will cause yet, but I bet it won't
             # be pretty somewhere down the line.
-            if obj.dtype == numpy.int64:
-                obj = numpy.asarray(obj, dtype = numpy.int32).view(cls)
+            if coerce.dtype == numpy.int64:
+                obj = coerce.view(dtype = numpy.int32, type = cls)
+            # HACK TODO force epoch type from datetime.  It would be lovely
+            # if we could just constrain the types of the numpy array
+            # and make a datetime object coercable directly but we must
+            # work around it here.
+            elif coerce.dtype == numpy.object:
+                obj = numpy.zeros(shape = coerce.shape, dtype = typing.epoch)
+                for (index, value) in numpy.ndenumerate(coerce):
+                    obj[index] = typing.epoch.from_datetime(value)
+                obj = obj.view(cls)
+                epoch_type = True
+            else:
+                obj = coerce.view(cls)
         obj._num = num
         obj._variable = variable
         obj._placeholder = placeholder
+        obj._epoch_type = epoch_type
         return obj
     def __array_finalize__(self, obj):
         if obj is not None:
             self._placeholder = getattr(obj, '_placeholder', False)
+            self._epoch_type = getattr(obj, '_epoch_type', False)
             self._num = getattr(obj, '_num', None)
             self._variable = getattr(obj, '_variable', None)
         self._fill()
@@ -147,10 +161,22 @@ class record(numpy.ndarray):
     # If there is only one value, it is not nice to make people parse out
     # the array info.
     def __repr__(self):
+        # TODO HACK this special-cased epoch code is not pretty but numpy
+        # refuses to let me do it a nicer way.  See note in typing.py
+        # TODO none of the EPOCH code makes much effort to handle EPOCH16
         if (self.shape is ()):
-            return repr(self[()])
+            if self._epoch_type:
+                return repr(typing.epoch(self[()]))
+            else:
+                return repr(self[()])
         else:
-            return repr(self.tolist())
+            if self._epoch_type:
+                temp = numpy.zeros(shape = self.shape, dtype = '|S64')
+                for (index, value) in numpy.ndenumerate(self):
+                    temp[index] = repr(typing.epoch(self[index]))
+                return repr(temp.tolist())
+            else:
+                return repr(self.tolist())
     # If there is only one value, it is not nice to make people have to
     # figure out how to index it.
     # TODO There are many more methods like this.  It would be nice to
@@ -164,6 +190,7 @@ class record(numpy.ndarray):
     # Internal methods
     def associateVariable(self, variable = None, num = None):
         self._variable = variable
+        self._epoch_type = variable._epoch_type
         self._num = num
         self._fill()
     def _dehyper(self, shape, hyper):
@@ -253,6 +280,7 @@ class variable(list):
         self._dimVariances = None
         self._num = None
         self._dtype = None
+        self._epoch_type = False
         # References
         self._archive = None
         self.attributes = attribute.variableTable(self)
@@ -320,10 +348,10 @@ class variable(list):
         if isinstance(value, record):
             ret = value
         else:
-            try:
+#            try:
                 ret = record(input_array = value)
-            except:
-                return None
+#            except:
+#                return None
         self._type(ret)
         self._dims(ret)
         return ret
@@ -331,6 +359,7 @@ class variable(list):
         if self._dtype is None:
             # Accept the type of this record without question.
             self._dtype = value.dtype
+            self._epoch_type = value._epoch_type
         else:
             try:
                 # Between the type of the record and the type of the variable,
@@ -340,6 +369,7 @@ class variable(list):
                 # If something went wrong (i.e. it was a string), use the
                 # old method
                 self._dtype = value.dtype
+                self._epoch_type = value._epoch_type
         self._recVariance = internal.VARY
         if self._dtype.type == numpy.string_:
             self._numElementsPerRecord = self._dtype.itemsize
@@ -368,6 +398,7 @@ class variable(list):
                             self._tokens['RECVARY'],
                             self._tokens['DIMVARYS'])
                 self._dtype = numpy.dtype(typing._typeConversions[type])
+                self._epoch_type = (type == internal.CDF_EPOCH)
                 self._numElementsPerRecord = elements
                 # The default numpy type obtained by simply informing it that
                 # we are dealing with strings results in truncating all read
@@ -414,6 +445,8 @@ class variable(list):
             dup._recVariance = self._recVariance
             dup._dimSizes = self._dimSizes
             dup._dimVariances = self._dimVariances
+            dup._dtype = self._dtype
+            dup._epoch_type = self._epoch_type
 #            memo[self] = dup
 #        return memo[self]
             return dup
@@ -502,10 +535,13 @@ class rVariable(variable):
         # information ourselves.
         self._type(self[0])
         self._dims(self[0])
+        type = typing._typeConversions[self._dtype.type]
+        if self._epoch_type:
+            type = internal.CDF_EPOCH
         (num, ) = internal.CDFlib(
           internal.CREATE_,
             self._tokens['SELECT_VARIABLE'],
-              name, typing._typeConversions[self._dtype.type],
+              name, type,
               self._numElementsPerRecord,
               self._recVariance, self._dimVariances)
         self._num = num
@@ -550,10 +586,6 @@ class zVariable(variable):
         'GET_ATTR_NUMENTRIES':internal.ATTR_NUMzENTRIES_,
         'HYPER':internal.zVAR_HYPERDATA_,
     }
-    def __init__(self, value = None, archive = None, num = None):
-        # Call base class initialization
-        variable.__init__(self, value = value, archive = archive, num = num)
-
     # Constructor closure
     def _constructor(self):
         return zVariable
@@ -585,10 +617,13 @@ class zVariable(variable):
         nDims = len(dimSizes)
         if dimSizes is []:
             dimSizes = [0]
+        type = typing._typeConversions[self._dtype.type]
+        if self._epoch_type:
+            type = internal.CDF_EPOCH
         (num, ) = internal.CDFlib(
           internal.CREATE_,
             self._tokens['SELECT_VARIABLE'],
-              name, typing._typeConversions[self._dtype.type],
+              name, type,
               self._numElementsPerRecord,
               nDims, dimSizes,
               self._recVariance, self._dimVariances)
