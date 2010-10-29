@@ -556,6 +556,7 @@ class rVariable(variable):
         'NAME':internal.ATTR_NAME_,
         'SELECT_ATTR':internal.ATTR_,
         'SELECT_ENTRY':internal.rENTRY_,
+        'ENTRY_EXISTS':internal.rENTRY_EXISTENCE_,
         # Tokens principally used for getting or putting values of attribute.
         'GET_ENTRY':internal.rENTRY_DATA_,
         'GET_ENTRY_DATATYPE':internal.rENTRY_DATATYPE_,
@@ -627,6 +628,7 @@ class zVariable(variable):
         'NAME':internal.ATTR_NAME_,
         'SELECT_ATTR':internal.ATTR_,
         'SELECT_ENTRY':internal.zENTRY_,
+        'ENTRY_EXISTS':internal.zENTRY_EXISTENCE_,
         # Tokens principally used for getting or putting values of attribute.
         'GET_ENTRY':internal.zENTRY_DATA_,
         'GET_ENTRY_DATATYPE':internal.zENTRY_DATATYPE_,

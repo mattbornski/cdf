@@ -171,9 +171,12 @@ class variableTable(framework.coerciveDictionary, framework.hashablyUniqueObject
         archive = self._variable._archive()
         if archive is not None:
             for name in archive.attributes._keys():
-                self[name] = vAttribute(
+                num = archive.attributes._number(name)
+                value = vAttribute(
                   variable = self._variable,
-                  num = archive.attributes._number(name))
+                  num = num)._value
+                if value is not None:
+                    self[name] = value
     def write(self):
         archive = self._variable._archive()
         if archive is not None:

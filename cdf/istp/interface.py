@@ -178,16 +178,16 @@ class validminStrategy(fillStrategy):
     fillvals = {
       internal.CDF_CHAR:    '.',
       internal.CDF_BYTE:    -128,
-      internal.CDF_UINT1:    255,
-      internal.CDF_UINT2:    65535,
-      internal.CDF_UINT4:    4294967295,
+      internal.CDF_UINT1:    0,
+      internal.CDF_UINT2:    0,
+      internal.CDF_UINT4:    0,
       internal.CDF_INT1:    -128,
       internal.CDF_INT2:    -32768,
       internal.CDF_INT4:    -2147483648,
       internal.CDF_REAL4:   -1.0*10**31,
       internal.CDF_REAL8:   -1.0*10**31,
-      internal.CDF_EPOCH:   '31-Dec-9999 23:59:59.999',
-      internal.CDF_EPOCH16: '31-Dec-9999 23:59:59.999',
+      internal.CDF_EPOCH:   '01-Jan-0000 00:00:00.000',
+      internal.CDF_EPOCH16: '01-Jan-0000 00:00:00.000',
     }
     def __call__(self, archive, attr, var):
         if attr not in archive[var].attributes:
@@ -198,15 +198,15 @@ class validminStrategy(fillStrategy):
 class validmaxStrategy(fillStrategy):
     fillvals = {
       internal.CDF_CHAR:    '.',
-      internal.CDF_BYTE:    -128,
+      internal.CDF_BYTE:     127,
       internal.CDF_UINT1:    255,
       internal.CDF_UINT2:    65535,
       internal.CDF_UINT4:    4294967295,
-      internal.CDF_INT1:    -128,
-      internal.CDF_INT2:    -32768,
-      internal.CDF_INT4:    -2147483648,
-      internal.CDF_REAL4:   -1.0*10**31,
-      internal.CDF_REAL8:   -1.0*10**31,
+      internal.CDF_INT1:     127,
+      internal.CDF_INT2:     32767,
+      internal.CDF_INT4:     2147483647,
+      internal.CDF_REAL4:    1.0*10**31,
+      internal.CDF_REAL8:    1.0*10**31,
       internal.CDF_EPOCH:   '31-Dec-9999 23:59:59.999',
       internal.CDF_EPOCH16: '31-Dec-9999 23:59:59.999',
     }
@@ -258,7 +258,7 @@ class timeSeriesStrategy(fillStrategy):
         var_type = archive[var].attributes.get('VAR_TYPE', None)
         if var_type is None:
             raise _MissingPrerequisite
-        elif var_type == 'ignore_data':
+        elif var_type == 'ignore_data' or var_type == 'support_data':
             raise _NotRequired
         else:
             display_type = archive[var].attributes.get('DISPLAY_TYPE', None)
@@ -370,12 +370,8 @@ attributes = {
       'UNIT_PTR':                   one_of(
                                       required('UNITS'),
                                       refersToVariable()),
-      'VALIDMIN':                   one_of(
-                                      primaryDataOnly(),
-                                      validminStrategy()),
-      'VALIDMAX':                   one_of(
-                                      primaryDataOnly(),
-                                      validmaxStrategy()),
+      'VALIDMIN':                   validminStrategy(),
+      'VALIDMAX':                   validmaxStrategy(),
       'VAR_TYPE':                   varTypeStrategy(),
     },
     'recommended':[
@@ -481,6 +477,7 @@ def autofill(arc, skt):
     finally:
         sys.path.pop()
         sys.path.pop()
+
 class archive(cdf.archive):
     def __init__(self, *args, **kwargs):
         if 'skeleton' in kwargs:
