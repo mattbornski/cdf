@@ -83,7 +83,7 @@ class record(numpy.ndarray):
             # sure what issues this will cause yet, but I bet it won't
             # be pretty somewhere down the line.
             if coerce.dtype == numpy.int64:
-                obj = coerce.view(dtype = numpy.int32, type = cls)
+                obj = numpy.asarray(coerce, dtype = numpy.int32).view(cls)
             # HACK TODO force epoch type from datetime.  It would be lovely
             # if we could just constrain the types of the numpy array
             # and make a datetime object coercable directly but we must
