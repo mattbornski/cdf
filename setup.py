@@ -1,14 +1,6 @@
 import setuptools
 import glob
-#import os
 import os.path
-
-#def data_file_candidates(path):
-#    return [
-#      file[0] for file in
-#        [glob.glob(os.path.join(dir[0], '*')) for dir in os.walk(path)]
-#      if file
-#    ]
 
 if __name__ == '__main__':
     # List the source files from the CDF v3.3 distribution.
@@ -109,32 +101,12 @@ if __name__ == '__main__':
     # skeletons, too.
     istp = ['cdf.istp.interface']
 
-#    data_dir = os.path.expanduser('~/cdf/')
-#    data_files = [
-#      # Documentation
-#      (os.path.join(data_dir, 'docs'), glob.glob('docs/*')),
-#      # Functional tests
-#      (os.path.join(data_dir, 'tests'), data_file_candidates('tests')),
-#      # Examples
-#      (os.path.join(data_dir, 'examples/internal'),
-#        ['examples/internal/list-cdf.py',
-#        'examples/internal/copy-cdf.py',
-#        'examples/internal/new-cdf.py',
-#        'examples/internal/test.cdf']),
-#      (os.path.join(data_dir, 'examples/pythonic'),
-#        ['examples/pythonic/list-cdf.py',
-#        'examples/pythonic/copy-cdf.py',
-#        'examples/pythonic/new-cdf.py',
-#        'examples/pythonic/csv2cdf.py',
-#        'examples/pythonic/test.csv',
-#        'examples/pythonic/test.cdf'])]
-
     # Invoke the setup code, which will (depending on the command line
     # arguments) build, install, or otherwise tinker with this package
     # on this system.
     setuptools.setup(
       name = 'CDF',
-      version = '0.30',
+      version = '0.31',
       description = 'This package handles files in NASA Common Data Format',
       author = 'Matt Born',
       author_email = 'mattborn@ssl.berkeley.edu',
@@ -148,16 +120,4 @@ if __name__ == '__main__':
       ext_modules = internal,
       py_modules = standard + pythonic + istp,
       requires = ['numpy (>=1.4)'],
-#        # Include some non-source files.  These files are for reference,
-#        # and will not be compiled.
-#      data_files = data_files,
     )
-
-#    stat = os.stat(os.path.expanduser('~'))
-#    uid = stat.st_uid
-#    gid = stat.st_gid
-#    for (dir, files) in [(data_dir, [])] + data_files:
-#        os.chown(dir, uid, gid)
-#        for file in files:
-#            path = os.path.join(dir, os.path.basename(file))
-#            os.chown(path, uid, gid)
