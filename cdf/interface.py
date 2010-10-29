@@ -174,6 +174,11 @@ class record(numpy.ndarray):
 #            else:
 #                return TypeError
 #        return placeholder
+    def __cmp__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__cmp__(*args, **kwargs)
+        else:
+            return ValueError
     def __add__(self, *args, **kwargs):
         if (self.shape is ()):
             return self[()].__add__(*args, **kwargs)
