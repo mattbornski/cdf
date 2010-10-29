@@ -91,7 +91,7 @@ class record(numpy.ndarray):
             elif coerce.dtype == numpy.object:
                 obj = numpy.zeros(shape = coerce.shape, dtype = typing.epoch)
                 for (index, value) in numpy.ndenumerate(coerce):
-                    obj[index] = typing.epoch.from_datetime(value)
+                    obj[index] = typing.epoch(value)
                 obj = obj.view(cls)
                 epoch_type = True
             else:
@@ -116,6 +116,7 @@ class record(numpy.ndarray):
         dup._variable = None
         dup._num = None
         dup._placeholder = None
+        dup._epoch_type = self._epoch_type
         return dup
     def __setitem__(self, key, value):
         if isinstance(value, list) and len(value) == 1:
@@ -126,6 +127,8 @@ class record(numpy.ndarray):
             else:
                 self[key[0]] = value
         else:
+            if self._epoch_type:
+                value = typing.epoch(value)
             numpy.ndarray.__setitem__(self, key, value)
     def __getitem__(self, key):
         if isinstance(key, tuple) and len(key) > 0:
@@ -157,33 +160,78 @@ class record(numpy.ndarray):
         def __exit__(self, type, value, traceback):
             pass
 
-    # Pythonic methods
-    # If there is only one value, it is not nice to make people parse out
-    # the array info.
     def __repr__(self):
-        # TODO HACK this special-cased epoch code is not pretty but numpy
-        # refuses to let me do it a nicer way.  See note in typing.py
-        # TODO none of the EPOCH code makes much effort to handle EPOCH16
         if (self.shape is ()):
-            if self._epoch_type:
-                return repr(typing.epoch(self[()]))
-            else:
-                return repr(self[()])
+            return repr(self[()])
         else:
-            if self._epoch_type:
-                temp = numpy.zeros(shape = self.shape, dtype = '|S64')
-                for (index, value) in numpy.ndenumerate(self):
-                    temp[index] = repr(typing.epoch(self[index]))
-                return repr(temp.tolist())
-            else:
-                return repr(self.tolist())
-    # If there is only one value, it is not nice to make people have to
-    # figure out how to index it.
+            return repr(self.tolist())
     # TODO There are many more methods like this.  It would be nice to
     # figure out how to coherently and easily override them all.
+#    def _override(fn):
+#        def placeholder(obj, *args, **kwargs):
+#            if (obj.shape is ()):
+#                return obj[()].__dict__[fn](*args, **kwargs)
+#            else:
+#                return TypeError
+#        return placeholder
     def __add__(self, *args, **kwargs):
         if (self.shape is ()):
             return self[()].__add__(*args, **kwargs)
+        else:
+            return ValueError
+    def __sub__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__sub__(*args, **kwargs)
+        else:
+            return ValueError
+    def __mul__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__mul__(*args, **kwargs)
+        else:
+            return ValueError
+    def __div__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__div__(*args, **kwargs)
+        else:
+            return ValueError
+    def __radd__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__radd__(*args, **kwargs)
+        else:
+            return ValueError
+    def __rsub__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__rsub__(*args, **kwargs)
+        else:
+            return ValueError
+    def __rmul__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__rmul__(*args, **kwargs)
+        else:
+            return ValueError
+    def __rdiv__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__rdiv__(*args, **kwargs)
+        else:
+            return ValueError
+    def __iadd__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__iadd__(*args, **kwargs)
+        else:
+            return ValueError
+    def __isub__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__isub__(*args, **kwargs)
+        else:
+            return ValueError
+    def __imul__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__imul__(*args, **kwargs)
+        else:
+            return ValueError
+    def __idiv__(self, *args, **kwargs):
+        if (self.shape is ()):
+            return self[()].__idiv__(*args, **kwargs)
         else:
             return ValueError
 
@@ -206,7 +254,10 @@ class record(numpy.ndarray):
                 ret.append(self._hyper(shape[1:], index + [i]))
             return ret
         else:
-            return self[tuple(index)]
+            ret = self[tuple(index)]
+            if self._epoch_type:
+                ret = ret.to_float64()
+            return ret
     def _fill(self):
         if self._placeholder and self._variable is not None:
             with self.selection(self) as selection:
@@ -348,10 +399,7 @@ class variable(list):
         if isinstance(value, record):
             ret = value
         else:
-#            try:
-                ret = record(input_array = value)
-#            except:
-#                return None
+            ret = record(input_array = value)
         self._type(ret)
         self._dims(ret)
         return ret
@@ -749,12 +797,7 @@ class archive(dict):
             if not isinstance(value, variable):
                 # This is not a variable.  Can we coerce it to
                 # be a variable?
-#                try:
-                    coerce = zVariable(value = value)
-#                except internal.error:
-#                    coerce = None
-#                    raise TypeError('Archive values must be variables ' \
-#                        + 'or coercable into variables.')
+                coerce = zVariable(value = value)
             else:
                 if not fromDisk:
                     coerce = copy.deepcopy(value)
@@ -921,12 +964,6 @@ class archive(dict):
             var = zVariable(archive = self, num = num)
             archive.__setitem__(self, name, var, fromDisk = True)
         return True
-#    def version(self):
-#        with self.selection() as selection:
-#            (version, ) = internal.CDFlib(
-#                internal.GET_,
-#                    internal.CDF_VERSION_)
-#            return version
     # Internal utilities methods
     def _numFromName(self, name):
         if not self._variables:
