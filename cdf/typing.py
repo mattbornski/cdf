@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Stock Python modules
+import copy
 import datetime
 
 # Third-party modules
@@ -25,12 +26,16 @@ class epoch(datetime.datetime):
             microsecond = millisecond * 1000
         return super(epoch, cls).__new__(cls,
           year, month, day, hour, minute, second, microsecond)
-    def to_float64(value):
-        return internal.computeEPOCH(
-          value.year, value.month, value.day,
-          value.hour, value.minute, value.second, value.microsecond / 1000)[0]
+    def __deepcopy__(self, memo):
+        dup = type(self)(self)
+        return dup
+    def to_float64(self):
+        ret = internal.computeEPOCH(
+          self.year, self.month, self.day,
+          self.hour, self.minute, self.second, self.microsecond / 1000)[0]
+        return ret
     def __str__(self):
-        return self.isoformat()
+        return "'" + self.isoformat() + "'"
     def __repr__(self):
         return str(self)
 

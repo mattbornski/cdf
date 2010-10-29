@@ -261,6 +261,7 @@ class record(numpy.ndarray):
     def _fill(self):
         if self._placeholder and self._variable is not None:
             with self.selection(self) as selection:
+                self._epoch_type = (internal.CDFlib(internal.GET_, self._variable._tokens['DATATYPE'])[0] == internal.CDF_EPOCH)
                 if selection:
                     internal.CDFlib(
                         internal.SELECT_,
@@ -371,10 +372,6 @@ class variable(list):
                     return self._variable.select()
         return variable_selection(self)
 
-    # Constructor closure
-    def _constructor(self):
-        return variable
-
     # List method overrides
     def __setitem__(self, key, value):
         list.__setitem__(self, key, self._coerce(value))
@@ -397,8 +394,11 @@ class variable(list):
     def _coerce(self, value):
         ret = None
         if isinstance(value, record):
-            ret = value
+            # Copy, on the theory that this record presently belongs to
+            # somebody else.
+            ret = copy.deepcopy(value)
         else:
+            # Coerce, since I need a record.
             ret = record(input_array = value)
         self._type(ret)
         self._dims(ret)
@@ -485,16 +485,15 @@ class variable(list):
             # worthless.  Probably it has to do with reference counts
             # while copying.
             hack = repr(self)
-            constructor = self._constructor()
-            dup = constructor()
-            for record in self:
-                dup.append(copy.deepcopy(record, memo))
+            dup = type(self)()
             dup._numElementsPerRecord = self._numElementsPerRecord
             dup._recVariance = self._recVariance
             dup._dimSizes = self._dimSizes
             dup._dimVariances = self._dimVariances
             dup._dtype = self._dtype
             dup._epoch_type = self._epoch_type
+            for record in self:
+                dup.append(copy.deepcopy(record, memo))
 #            memo[self] = dup
 #        return memo[self]
             return dup
@@ -566,10 +565,6 @@ class rVariable(variable):
         # Call base class initialization
         variable.__init__(self, value = value, archive = archive, num = num)
 
-    # Constructor closure
-    def _constructor(self):
-        return rVariable
-
     # Internal methods
     def _meta(self):
         variable._meta(self)
@@ -634,9 +629,6 @@ class zVariable(variable):
         'GET_ATTR_NUMENTRIES':internal.ATTR_NUMzENTRIES_,
         'HYPER':internal.zVAR_HYPERDATA_,
     }
-    # Constructor closure
-    def _constructor(self):
-        return zVariable
 
     # Internal methods
     def _meta(self):
