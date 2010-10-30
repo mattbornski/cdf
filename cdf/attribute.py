@@ -119,7 +119,7 @@ class variableTable(framework.coerciveDictionary, framework.hashablyUniqueObject
     def __init__(self, variable):
         self._variable = variable
         self._invalid = {}
-        dict.__init__(self)
+        framework.coerciveDictionary.__init__(self)
     def __setitem__(self, key, value):
         if key in self:
             dict.__setitem__(self, key, value)
@@ -222,12 +222,7 @@ class archiveTable(framework.coerciveDictionary):
         self._creationKeys = set()
         self._variableKeys = set()
 
-    # Dictionary overrides
-    def keys(self):
-        return sorted(framework.coerciveDictionary.keys(self))
-    def __repr__(self):
-        return '{' + ', '.join(
-          ["'" + key + "': " + str(self[key]) for key in self.keys()]) + '}'
+        framework.coerciveDictionary.__init__(self)
 
     def __setitem__(self, key, value, fromDisk = False):
         if key in self._variableScopeUsers:

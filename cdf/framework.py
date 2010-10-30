@@ -40,7 +40,15 @@ class coerciveObject(object):
                 pass
         return None
 
-class coerciveDictionary(dict):
+class sortedDictionary(dict):
+    # Dictionary overrides
+    def keys(self):
+        return sorted(dict.keys(self))
+    def __repr__(self):
+        return '{' + ', '.join(
+          ["'" + key + "': " + repr(self[key]) for key in self.keys()]) + '}'
+
+class coerciveDictionary(sortedDictionary):
     pass
 
 class coerciveList(list):
