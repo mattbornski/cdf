@@ -153,6 +153,9 @@ class record(numpy.ndarray):
         def __init__(self, record):
             self._record = record
         def __enter__(self):
+            # TODO Take the process-wide lock on selection.  Since the CDF
+            # toolkit isn't thread-safe, we must take extra precautions
+            # to be so ourselves.
             if self._record is not None:
                 return self._record.select()
             else:

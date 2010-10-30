@@ -217,7 +217,9 @@ class validmaxStrategy(fillStrategy):
             raise _InferenceSuccessful
 
 class varTypeStrategy(fillStrategy):
-    pass
+    def __call__(self, archive, attr, var):
+        if attr not in archive[var].attributes:
+            archive[var].attributes[attr] = 'support_data'
 
 class notRequired(fillStrategy):
     def __call__(self, *args, **kwargs):
