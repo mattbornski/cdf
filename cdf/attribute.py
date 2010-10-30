@@ -216,14 +216,23 @@ class archiveTable(framework.coerciveDictionary):
         # Track which attribute numbers are slated for deletion.  We do not
         # bother keeping tabs on any other information about the attribute
         # because the number is all we need to blow it away.
-        self._deletionNumbers = []
+        self._deletionNumbers = set()
         # Track which global attribute keys are slated for creation.  We use
         # the name because a number has not yet been assigned.
-        self._creationKeys = []
+        self._creationKeys = set()
         self._variableKeys = set()
+
+    # Dictionary overrides
+    def keys(self):
+        return sorted(framework.coerciveDictionary.keys(self))
+    def __repr__(self):
+        return '{' + ', '.join(
+          ["'" + key + "': " + str(self[key]) for key in self.keys()]) + '}'
 
     def __setitem__(self, key, value, fromDisk = False):
         if key in self._variableScopeUsers:
+            # This logic ensures that globally scoped attributes take
+            # precedence over variable scoped attributes.
             for user in self._variableScopeUsers[key]:
                 user = user()
                 if user is not None:
@@ -234,8 +243,8 @@ class archiveTable(framework.coerciveDictionary):
             # key from disk entirely and then writing out all values.
             if key in self and key in self._globalScopeNamesToNumbers:
                 self._deletionNumbers.add(self._globalScopeNamesToNumbers[key])
-                self._globalScopeNamesToNumbers.remove(key)
-            self._creationKeys.append(key)
+                del self._globalScopeNamesToNumbers[key]
+            self._creationKeys.add(key)
         dict.__setitem__(self, key, value)
     def __delitem__(self, key):
         if key in self._creationKeys:
@@ -292,22 +301,23 @@ class archiveTable(framework.coerciveDictionary):
         if len(users) == 0:
             self._variableScopeUsers.remove(key)
             if key in self._variableScopeNamesToNumbers:
-                self._deletionNumbers.append(
+                self._deletionNumbers.add(
                   self._variableScopeNamesToNumbers[key])
                 self._variableScopeNamesToNumbers.remove(key)
         else:
             self._variableScopeUsers[key] = users
     def write(self):
-        order = self._deletionNumbers[:]
-        order.sort()
-        order.reverse()
-        for num in order:
+        ordering = list(self._deletionNumbers)
+        ordering.sort()
+        ordering.reverse()
+        for num in ordering:
             internal.CDFlib(
                 internal.SELECT_,
                     internal.ATTR_,
                         num,
                 internal.DELETE_,
                     internal.ATTR_)
+        self._deletionNumbers = []
         for key in self._creationKeys:
             # Verify that the attribute values are coherent.
             # Unlike the special treatment for vAttributes, gAttributes
@@ -327,6 +337,8 @@ class archiveTable(framework.coerciveDictionary):
                   internal.gENTRY_,
                   internal.gENTRY_DATA_,
                   attrNum)
+                self._globalScopeNamesToNumbers[key] = attrNum
+        self._creationKeys = set()
     def read(self):
         (numAttrs, ) = internal.CDFlib(
             internal.GET_,
@@ -341,6 +353,7 @@ class archiveTable(framework.coerciveDictionary):
                     internal.ATTR_NAME_,
                     internal.ATTR_SCOPE_)
             if scope == internal.GLOBAL_SCOPE:
+                self._globalScopeNamesToNumbers[name] = num
                 self.__setitem__(\
                     name, gAttribute(archive = self, num = num), True)
             else:

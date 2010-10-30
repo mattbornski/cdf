@@ -1,1 +1,2 @@
 {'float': [1.0], 'int': [1L], 'string': ['one']}
+{'float': [1.0], 'int': [2L], 'string': ['one']}
