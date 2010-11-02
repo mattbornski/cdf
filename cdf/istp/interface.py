@@ -245,11 +245,19 @@ class refersToVariable(fillStrategy):
     def __init__(self, attr = None):
         self._attr = attr
     def __call__(self, archive, attr, var):
-        if self._attr is not None:
-            attr = self._attr
         if attr not in archive[var].attributes:
             # The attr does not exist.
-            raise InferenceError
+            # If we have a default value, assign it.
+            if self._attr is not None:
+                # Remember, it must be a valid variable.
+                if self._attr in archive:
+                    archive[var].attributes[attr] = self._attr
+                # Otherwise, this is an error.
+                else:
+                    raise cdf.CoherenceError
+            # Otherwise, this is an error.
+            else:
+                raise InferenceError
         elif archive[var].attributes[attr] not in archive:
             # The attr exists but is not valid.
             raise cdf.CoherenceError
@@ -275,7 +283,7 @@ class dimensionStrategy(fillStrategy):
         self._strategy = strategy
     def __call__(self, archive, attr, var):
         # Determine if this strategy applies.
-        if len(archive[var]._dimSizes) == self._dim:
+        if len(archive[var]._dimSizes) >= self._dim:
             # Call secondary strategy.
             return self._strategy(archive, attr, var)
         else:

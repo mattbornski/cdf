@@ -1,6 +1,7 @@
 # Stock python modules
 import copy
 import os
+import threading
 import time
 import weakref
 
@@ -13,36 +14,67 @@ from . import attribute
 from . import typing
 
 
+# The underlying CDF library is not thread-safe.  Make our layer thread
+# safe by requiring you to acquire 
+_selection_lock = threading.RLock()
+
+# Closure to ensure proper selection of CDF files.
+class _selection(object):
+    tokens = {}
+    parents = []
+    def __init__(self):
+        global _selection_lock
+        self._lock = _selection_lock
+    def __enter__(self, *args, **kwargs):
+        # Acquire the process-wide lock on CDF selection.  This is a 
+        # re-entrant lock as long as the re-acquisition comes from the
+        # same thread which currently holds it.
+        self._lock.acquire()
+        # Acquire any "parent" selections, for instance, the archive's
+        # selection if we are a variable, or the variable's selection if
+        # we are a record.
+        for parent in self.parents:
+            parent.__enter__(*args, **kwargs)
+        if len(self.tokens.keys()) > 0:
+            args = [internal.SELECT_]
+            # Selection precedence is important.  Selecting something
+            # without first selecting its context probably will cause
+            # things to fail mysteriously.
+            # For zVariable data records, precedence goes
+            #  archive -> variable -> record
+            # For rVariable data records, the archive must come first, but
+            # the record number is global and does not depend on the
+            # variable being selected, so you can select the record number
+            # and the variable number independently.
+            # For gAttributes, precedence goes archive -> attribute -> entry.
+            # For vAttributes, archive must come first, entry must come last,
+            # but you can select the attribute and the variable in either
+            # order in the middle.
+            # Using our inside knowledge of how the tokens are defined,
+            # which might not be the best idea going forward but is super
+            # convenient right now, we can see that the tokens which are
+            # defined to be the lowest numerically should have the highest
+            # precedence:
+            #define CDF_                    1L
+            #define rVARs_RECNUMBER_        29L
+            #define rVAR_                   35L
+            #define zVAR_                   57L
+            #define zVAR_RECNUMBER_         79L
+            #define ATTR_                   85L
+            #define gENTRY_                 96L
+            #define rENTRY_                 102L
+            #define zENTRY_                 109L
+            for token in sorted(self.tokens.keys()):
+                args += [token, self.tokens[token]]
+            internal.CDFlib(*args)
+    def __exit__(self, *args, **kwargs):
+        self._lock.release()
 
 # Error when a coherence restriction of the CDF format is violated.
 class CoherenceError(Exception):
     pass
 
 
-
-# Closure to ensure proper selection of CDF files.
-class selection:
-    def __init__(self):
-        pass
-    def __enter__(self):
-        pass
-    def __exit__(self, type, value, traceback):
-        pass
-
-# Primitive to underwrite some common functions of CDF data structures.
-class primitive:
-    def __init__(self, *args, **kwargs):
-        self._parents = []
-        if 'parent' in kwargs:
-            self._parents.append(kwargs['parent'])
-    def select(self):
-        pass
-    def unselect(self):
-        pass
-    def from_binary(self, *args, **kwargs):
-        pass
-    def to_binary(self, *args, **kwargs):
-        pass
 
 class record(numpy.ndarray):
     # NumPy overrides
@@ -107,6 +139,7 @@ class record(numpy.ndarray):
             self._epoch_type = getattr(obj, '_epoch_type', False)
             self._num = getattr(obj, '_num', None)
             self._variable = getattr(obj, '_variable', None)
+        self.selection = _selection()
         self._fill()
     def __deepcopy__(self, memo):
         # Ensure that actual data is copied over with the record, not
@@ -138,30 +171,25 @@ class record(numpy.ndarray):
                 return self[key[0]]
         else:
             return numpy.ndarray.__getitem__(self, key)
-    # Selection function
-    def select(self):
-        if self._variable is not None:
-            if self._variable.select():
-                internal.CDFlib(
-                    internal.SELECT_,
-                        self._variable._tokens['RECORD'],
-                            self._num + 1)
-                return True
-        return False
+
     # Selection closure
-    class selection:
-        def __init__(self, record):
-            self._record = record
-        def __enter__(self):
-            # TODO Take the process-wide lock on selection.  Since the CDF
-            # toolkit isn't thread-safe, we must take extra precautions
-            # to be so ourselves.
-            if self._record is not None:
-                return self._record.select()
-            else:
-                return False
-        def __exit__(self, type, value, traceback):
-            pass
+    # Record selection implies variable selection and archive selection.
+    # Archive selection will take the process-wide CDF selection lock,
+    # for thread safety.
+    class selection(_selection):
+        _record = None
+        def __init__(self, *args, **kwargs):
+            super(selection, self).__init__(*args, **kwargs)
+            self._entered = []
+        def __enter__(self, *args, **kwargs):
+            super(selection, self).__enter__(*args, **kwargs)
+            sel = self._record._variable.selection()
+            sel.__enter__()
+            self._entered.append(sel)
+            internal.CDFlib(
+                internal.SELECT_,
+                    self._record._variable._tokens['RECORD'],
+                        self._record._num + 1)
 
     def __repr__(self):
         if (self.shape is ()):
@@ -268,35 +296,8 @@ class record(numpy.ndarray):
             return ret
     def _fill(self):
         if self._placeholder and self._variable is not None:
-            with self.selection(self) as selection:
+            with self.selection:
                 self._epoch_type = (internal.CDFlib(internal.GET_, self._variable._tokens['DATATYPE'])[0] == internal.CDF_EPOCH)
-                if selection:
-                    internal.CDFlib(
-                        internal.SELECT_,
-                            self._variable._tokens['RECORD'],
-                                self._num,
-                            self._variable._tokens['RECCOUNT'],
-                                1,
-                            self._variable._tokens['RECINTERVAL'],
-                                1)
-                    if self._variable._dimSizes is not None:
-                        internal.CDFlib(
-                            internal.SELECT_,
-                                self._variable._tokens['DIMCOUNTS'],
-                                    self._variable._dimSizes,
-                                self._variable._tokens['DIMINTERVALS'],
-                                    [1 for dim in self._variable._dimSizes],
-                                self._variable._tokens['INDEX'],
-                                    [0 for dim in self._variable._dimSizes])
-                    (hyper, ) = internal.CDFlib(
-                        internal.GET_,
-                            self._variable._tokens['HYPER'])
-                    self._dehyper([], hyper)
-                    self._placeholder = False
-    def _write(self):
-        # The variable must have selected itself before calling us.
-        with self.selection(self) as selection:
-            if selection:
                 internal.CDFlib(
                     internal.SELECT_,
                         self._variable._tokens['RECORD'],
@@ -314,13 +315,38 @@ class record(numpy.ndarray):
                                 [1 for dim in self._variable._dimSizes],
                             self._variable._tokens['INDEX'],
                                 [0 for dim in self._variable._dimSizes])
-                hyper = self._hyper(list(self.shape), [])
-                if not isinstance(hyper, list):
-                    hyper = [hyper]
+                (hyper, ) = internal.CDFlib(
+                    internal.GET_,
+                        self._variable._tokens['HYPER'])
+                self._dehyper([], hyper)
+                self._placeholder = False
+    def _write(self):
+        # The variable must have selected itself before calling us.
+        with self.selection:
+            internal.CDFlib(
+                internal.SELECT_,
+                    self._variable._tokens['RECORD'],
+                        self._num,
+                    self._variable._tokens['RECCOUNT'],
+                        1,
+                    self._variable._tokens['RECINTERVAL'],
+                        1)
+            if self._variable._dimSizes is not None:
                 internal.CDFlib(
-                    internal.PUT_,
-                        self._variable._tokens['HYPER'],
-                            hyper)
+                    internal.SELECT_,
+                        self._variable._tokens['DIMCOUNTS'],
+                            self._variable._dimSizes,
+                        self._variable._tokens['DIMINTERVALS'],
+                            [1 for dim in self._variable._dimSizes],
+                        self._variable._tokens['INDEX'],
+                            [0 for dim in self._variable._dimSizes])
+            hyper = self._hyper(list(self.shape), [])
+            if not isinstance(hyper, list):
+                hyper = [hyper]
+            internal.CDFlib(
+                internal.PUT_,
+                    self._variable._tokens['HYPER'],
+                        hyper)
     def indices(self):
         # This is a generator function which will iterate over all
         # indices of this variable.  It is suitable for calls to
@@ -693,6 +719,7 @@ class zVariable(variable):
 class archive(dict):
     # Lifecycle methods
     def __init__(self, name = None):
+        self.selection._archive = self
         # Call base class initialization
         dict.__init__(self)
         # Declare and null the variables we need.
@@ -706,6 +733,11 @@ class archive(dict):
         self._zVariableDeletionNumbers = []
         self._variableInsertions = {}
 
+        # Set up the selection closure, and (only for archives) the
+        # creation closure.
+#        self.selection = selection()
+#        self.creation = selection()
+
         self.attributes = attribute.archiveTable(self)
 
         # Initialize the variables in different way depending on
@@ -717,9 +749,14 @@ class archive(dict):
 
     # Selection closure
     class selection:
-        def __init__(self, archive, filename, create = True):
-            self._archive = archive
+        _archive = None
+        def __init__(self, filename = None, create = True):
             self._filename = filename
+            if self._filename is None:
+#                try:
+                    self._filename = self._archive._filenames[-1]
+#                except:
+#                    pass
             self._id = None
             self._create = create
         def __enter__(self):
@@ -861,110 +898,113 @@ class archive(dict):
         # Select the archive so that all the attributes and variables
         # have the prerequisite state required to read in their own
         # information.
-        with self.selection(self, filename, create = False) as selection:
-            if selection:
+        try:
+            with self.selection(create = False):
                 self.attributes.read()
                 self._indexVariables()
                 return True
-            else:
-                return False
+        except internal.error:
+            # The archive does not exist.  We will not create it at this time.
+            return False
     # Flush to disk
     def save(self, filename = None):
         if filename is None:
-            if len(self._filenames) > 0:
-                filename = self._filenames[-1]
-            else:
+            if len(self._filenames) == 0:
                 raise ValueError('No filename specified and none can be inferred.')
         else:
             if filename in self._filenames:
                 self._filenames.remove(filename)
             self._filenames.append(filename)
-        with self.selection(self, filename) as selection:
-            if selection:
-                self._save()
+        # Implicit creation is okay when we are saving, but definitely
+        # not when creating.
+#        with self.creation:
+        with self.selection():
+            self._save()
     def _save(self):
-        # If there have been things removed from the archive then we
-        # need to remove them on disk.  Order matters here, because
-        # we must refer to the variables by number, and the act of
-        # removing a variable causes the renumbering of all subsequent
-        # variables.  To avoid unnecessary pain and suffering, we'll
-        # remove variables in reverse number order, highest to lowest.
-        self._rVariableDeletionNumbers.sort()
-        self._rVariableDeletionNumbers.reverse()
-        for num in self._rVariableDeletionNumbers:
-            internal.CDFlib(
-                internal.SELECT_,
-                    internal.rVAR_, num,
-                internal.DELETE_,
-                    internal.rVAR_)
-        self._rVariableDeletionList = []
-        self._zVariableDeletionNumbers.sort()
-        self._zVariableDeletionNumbers.reverse()
-        for num in self._zVariableDeletionNumbers:
-            internal.CDFlib(
-                internal.SELECT_,
-                    internal.zVAR_, num,
-                internal.DELETE_,
-                    internal.zVAR_)
-        self._zVariableDeletionList = []
+        with self.selection():
+            # If there have been things removed from the archive then we
+            # need to remove them on disk.  Order matters here, because
+            # we must refer to the variables by number, and the act of
+            # removing a variable causes the renumbering of all subsequent
+            # variables.  To avoid unnecessary pain and suffering, we'll
+            # remove variables in reverse number order, highest to lowest.
+            self._rVariableDeletionNumbers.sort()
+            self._rVariableDeletionNumbers.reverse()
+            for num in self._rVariableDeletionNumbers:
+                internal.CDFlib(
+                    internal.SELECT_,
+                        internal.rVAR_, num,
+                    internal.DELETE_,
+                        internal.rVAR_)
+            self._rVariableDeletionList = []
+            self._zVariableDeletionNumbers.sort()
+            self._zVariableDeletionNumbers.reverse()
+            for num in self._zVariableDeletionNumbers:
+                internal.CDFlib(
+                    internal.SELECT_,
+                        internal.zVAR_, num,
+                    internal.DELETE_,
+                        internal.zVAR_)
+            self._zVariableDeletionList = []
 
-        # Now write all the new things added to this archive to disk.
-        # Prepare for writing variables by pre-selecting intervals for
-        # writing.
-        for name in self._variableInsertions.keys():
-            var = self._variableInsertions[name]
-            var._write(name)
-        self._variableInsertions = {}
+            # Now write all the new things added to this archive to disk.
+            # Prepare for writing variables by pre-selecting intervals for
+            # writing.
+            for name in self._variableInsertions.keys():
+                var = self._variableInsertions[name]
+                var._write(name)
+            self._variableInsertions = {}
 
-        self.attributes.write()
-        for var in self.keys():
-            self[var].attributes.write()
+            self.attributes.write()
+            for var in self.keys():
+                self[var].attributes.write()
 
     # Access data
     def _indexVariables(self):
-        # Set some archive-wide properties
-        (encoding, format, majority) = internal.CDFlib(
-            internal.GET_,
-                internal.CDF_ENCODING_,
-                internal.CDF_FORMAT_,
-                internal.CDF_MAJORITY_)
-        self._encoding = encoding
-        self._format = format
-        self._majority = majority
-        # Set some archive-wide properties relevant to rVariables
-        (numDims, dimSizes) = internal.CDFlib(
-            internal.GET_,
-                internal.rVARs_NUMDIMS_,
-                internal.rVARs_DIMSIZES_)
-        if numDims > 0:
-            self._dimSizes = dimSizes
-        # List all rVariables.
-        (count, ) = internal.CDFlib(
-            internal.GET_,
-                internal.CDF_NUMrVARS_)
-        for num in xrange(0, count):
-            internal.CDFlib(
-                internal.SELECT_,
-                    internal.rVAR_, num)
-            (name, ) = internal.CDFlib(
+        with self.selection():
+            # Set some archive-wide properties
+            (encoding, format, majority) = internal.CDFlib(
                 internal.GET_,
-                    internal.rVAR_NAME_)
-            self.__setitem__(name,
-                rVariable(archive = self, num = num),
-                fromDisk = True)
-        # List all zVariables.
-        (count, ) = internal.CDFlib(
-            internal.GET_,
-                internal.CDF_NUMzVARS_)
-        for num in xrange(0, count):
-            internal.CDFlib(
-                internal.SELECT_,
-                    internal.zVAR_, num)
-            (name, ) = internal.CDFlib(
+                    internal.CDF_ENCODING_,
+                    internal.CDF_FORMAT_,
+                    internal.CDF_MAJORITY_)
+            self._encoding = encoding
+            self._format = format
+            self._majority = majority
+            # Set some archive-wide properties relevant to rVariables
+            (numDims, dimSizes) = internal.CDFlib(
                 internal.GET_,
-                    internal.zVAR_NAME_)
-            var = zVariable(archive = self, num = num)
-            archive.__setitem__(self, name, var, fromDisk = True)
+                    internal.rVARs_NUMDIMS_,
+                    internal.rVARs_DIMSIZES_)
+            if numDims > 0:
+                self._dimSizes = dimSizes
+            # List all rVariables.
+            (count, ) = internal.CDFlib(
+                internal.GET_,
+                    internal.CDF_NUMrVARS_)
+            for num in xrange(0, count):
+                internal.CDFlib(
+                    internal.SELECT_,
+                        internal.rVAR_, num)
+                (name, ) = internal.CDFlib(
+                    internal.GET_,
+                        internal.rVAR_NAME_)
+                self.__setitem__(name,
+                    rVariable(archive = self, num = num),
+                    fromDisk = True)
+            # List all zVariables.
+            (count, ) = internal.CDFlib(
+                internal.GET_,
+                    internal.CDF_NUMzVARS_)
+            for num in xrange(0, count):
+                internal.CDFlib(
+                    internal.SELECT_,
+                        internal.zVAR_, num)
+                (name, ) = internal.CDFlib(
+                    internal.GET_,
+                        internal.zVAR_NAME_)
+                var = zVariable(archive = self, num = num)
+                archive.__setitem__(self, name, var, fromDisk = True)
         return True
     # Internal utilities methods
     def _numFromName(self, name):
