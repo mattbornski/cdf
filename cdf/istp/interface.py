@@ -405,6 +405,8 @@ attributes = {
   },
 }
 
+# Attempt to fill in attributes/variables of the target archive based
+# on the contents of the skeleton file.
 def autofill(arc, skt):
     try:
         sys.path.append(os.path.dirname(skt))
@@ -488,6 +490,31 @@ def autofill(arc, skt):
         sys.path.pop()
         sys.path.pop()
 
+# Attempt to ensure that certain expectations of a well-formed ISTP CDFs
+# are met.
+def verify(arc):
+    for var in arc.keys():
+        dimensions = []
+        for attr in arc[var].attributes.keys():
+            if attr.startswith('DEPEND_'):
+                # If the variable has DEPEND_x set, it had better have at
+                # least x dimensions.  Furthermore, in the x dimension,
+                # it had better have the same number of values as the
+                # series it depends on.
+                dimension = max(1, int(attr.split('_')[1]))
+                dimensions.append(dimension)
+                depends = arc[var].attributes[attr]
+                if depends in arc:
+                    # TODO compare the appropriate dimension.
+                    if len(arc[depends]) == len(arc[var]):
+                        continue
+                    else:
+                        raise cdf.CoherenceError
+                else:
+                    raise cdf.CoherenceError
+        if len(dimensions) != max(dimensions + [0]):
+            raise cdf.CoherenceError(str(dimensions))
+
 class archive(cdf.archive):
     def __init__(self, *args, **kwargs):
         if 'skeleton' in kwargs:
@@ -497,3 +524,4 @@ class archive(cdf.archive):
     def _save(self):
         autofill(self, self._skeleton)
         cdf.archive._save(self)
+        verify(self)
