@@ -509,7 +509,7 @@ def verify(arc):
                     if len(arc[depends]) == len(arc[var]):
                         continue
                     else:
-                        raise cdf.CoherenceError
+                        raise cdf.CoherenceError('Variable "' + var + '", length ' + str(len(arc[var])) + ' depends on "' + depends + '", length ' + str(len(arc[depends])))
                 else:
                     raise cdf.CoherenceError
         if len(dimensions) != max(dimensions + [0]):
