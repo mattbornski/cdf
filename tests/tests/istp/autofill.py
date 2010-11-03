@@ -7,7 +7,7 @@ def test():
     import os.path
     import random
 
-    test = cdf.istp.archive('test', skeleton = 'istp.skt')
+    test = cdf.istp.archive('test', skeleton = os.path.splitext(__file__)[0] + '.skt')
     test['independentData'] = [i for i in xrange(0, 5)]
     test['primaryDependentData'] = \
       [random.uniform(0, 100) for i in xrange(0, len(test['independentData']))]

@@ -494,7 +494,7 @@ def autofill(arc, skt):
 # are met.
 def verify(arc):
     for var in arc.keys():
-        dimensions = []
+        dimensions = {}
         for attr in arc[var].attributes.keys():
             if attr.startswith('DEPEND_'):
                 # If the variable has DEPEND_x set, it had better have at
@@ -502,17 +502,20 @@ def verify(arc):
                 # it had better have the same number of values as the
                 # series it depends on.
                 dimension = max(1, int(attr.split('_')[1]))
-                dimensions.append(dimension)
-                depends = arc[var].attributes[attr]
-                if depends in arc:
-                    # TODO compare the appropriate dimension.
-                    if len(arc[depends]) == len(arc[var]):
-                        continue
-                    else:
-                        raise cdf.CoherenceError('Variable "' + var + '", length ' + str(len(arc[var])) + ' depends on "' + depends + '", length ' + str(len(arc[depends])))
+                dimensions[dimension] = arc[var].attributes[attr]
+        for dimension in dimensions:
+            depends = dimensions[dimension]
+            if depends in arc:
+                data = arc[var]
+                for i in xrange(1, dimension):
+                    data = data[i]
+                if len(data) <= len(arc[depends]):
+                    continue
                 else:
-                    raise cdf.CoherenceError
-        if len(dimensions) != max(dimensions + [0]):
+                    raise cdf.CoherenceError('Variable "' + var + '", length ' + str(len(arc[var])) + ' depends on "' + depends + '", length ' + str(len(arc[depends])))
+            else:
+                raise cdf.CoherenceError
+        if len(dimensions.keys()) != max(dimensions.keys() + [0]):
             raise cdf.CoherenceError(str(dimensions))
 
 class archive(cdf.archive):
