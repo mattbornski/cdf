@@ -19,15 +19,15 @@ def test():
 
     # There should be an error message, since there are mismatches in the
     # dimensions and their dependencies.
-#    try:
-#        test.save()
-#    except cdf.istp.interface.InferenceError:
-#        pass
-#    else:
-#        print 'no inference error'
+    try:
+        test.save()
+    except cdf.istp.interface.InferenceError:
+        pass
+    else:
+        print 'no inference error'
 
     # Correct the inference error.
-#    test['two'] = [1, 2]
+    test['two'] = [1, 2]
     test['threedim'].attributes['DEPEND_2'] = 'two'
 
     # This time, there should be no errors.
