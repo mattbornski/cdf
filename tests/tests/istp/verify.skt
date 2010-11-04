@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+
+skeleton = {
+  'attributes':{
+    'global':{
+      'Data_type':        'eff',
+      # Data_version is required.  If it exists when you load an existing
+      # file as an ISTP compliant archive, it will be incremented when you
+      # save it (if changed).  If it does not exist when you save a file
+      # as ISTP compliant, it will be set to 1.
+      'Descriptor':       'l1>L1 DATA',
+      'Discipline':       [
+                            'Space Physics>Magnetospheric Science',
+                            'Space Physics>Interplanetary Studies',
+                          ],
+      'Instrument_type':  'Electric Fields (space)',
+      'Logical_source':   'tha_l1_eff',
+      'Logical_source_description':
+                          'Probe Electric Field Instrument, ' \
+                            + 'Fast Survey Waveform',
+      'Mission_group':    'THEMIS',
+      'PI_name':          'V. Angelopoulos, J. W. Bonnell, F. S. Mozer ' \
+                            + 'and R. E. Ergun',
+      'PI_affiliation':   'UCB and LASP respectively, NASA NAS5-02099',
+      'Project':          'themis',
+      'Source_name':      'tha>THEMIS Probe A',
+      'TEXT':             'Sensor and electronics design provided by UCB (' \
+                            + 'J. W. Bonnell, F. S. Mozer), Digital Fields ' \
+                            + 'Board provided by LASP (R. Ergun)',
+    },
+    'variable':{
+    },
+  },
+  'variables':{
+    # No static variables here yet
+  }
+}

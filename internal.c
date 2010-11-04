@@ -588,19 +588,19 @@ rebinFromPythonToC(PyObject *in, long type) {
                         if (size == sizeof(char)) {
                             char conv;
                             PyArg_ParseTuple(tuple, "b", &conv);
-                            ((char *)(out))[i] = conv;
+                            ((char *)out)[i] = conv;
                         } else if (size == sizeof(short)) {
                             short conv;
                             PyArg_ParseTuple(tuple, "h", &conv);
-                            ((short *)(out))[i] = conv;
+                            ((short *)out)[i] = conv;
                         } else if (size == sizeof(int)) {
                             int conv;
                             PyArg_ParseTuple(tuple, "i", &conv);
-                            ((int *)(out))[i] = conv;
+                            ((int *)out)[i] = conv;
                         } else if (size == sizeof(long)) {
                             long conv;
                             PyArg_ParseTuple(tuple, "l", &conv);
-                            ((long *)(out))[i] = conv;
+                            ((long *)out)[i] = conv;
                         } else {
                             Py_DecRef(tuple);
                             printf("cdf.internal: Unable to convert Python "
@@ -1086,11 +1086,13 @@ void **allocateHyperDataStorage(int z, long **dims, long *n_dims, long type) {
           GET_, (z ? zVAR_DIMSIZES_ : rVARs_DIMSIZES_));
         long i = 0;
         for (i = 0; i < dimensionCount; i++) {
-            if (majority == ROW_MAJOR) {
-                *dims[dimensionCount - i - 1 + dimensionOffset] = lengths[i];
+            long index;
+            if (majority != ROW_MAJOR) {
+                index = i + 1 + dimensionOffset;
             } else {
-                *dims[i + 1 + dimensionOffset] = lengths[i];
+                index = dimensionCount - i - 1 + dimensionOffset;
             }
+            ((long *)*dims)[index] = lengths[i];
         }
         free(lengths);
     }
@@ -1828,8 +1830,7 @@ cleanupMultiDimensionalArray(void **array, long *dims, long n_dims) {
     if (array != NULL) {
         if (n_dims > 1) {
             for (i = 0; i < dims[0]; i++) {
-                cleanupMultiDimensionalArray(
-                  array + i * sizeof(void **),
+                cleanupMultiDimensionalArray(((void **)array)[i],
                   (long *)(&(dims[1])), (n_dims - 1));
             }
         }

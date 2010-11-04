@@ -409,17 +409,21 @@ attributes = {
 # on the contents of the skeleton file.
 def autofill(arc, skt):
     try:
-        sys.path.append(os.path.dirname(skt))
-        dir = tempfile.mkdtemp()
-        sktfile = os.path.join(dir, 'sktfile.py')
-        shutil.copy(skt, sktfile)
-        sys.path.append(dir)
-        import sktfile
+        if skt is not None:
+            sys.path.append(os.path.dirname(skt))
+            dir = tempfile.mkdtemp()
+            sktfile = os.path.join(dir, 'sktfile.py')
+            shutil.copy(skt, sktfile)
+            sys.path.append(dir)
+            import sktfile
+            skeleton = sktfile.skeleton
+        else:
+            skeleton = {'variables':{}, 'attributes':{'global':{}, 'variable':{}}}
 
         # Fill in static variables
-        for var in sktfile.skeleton['variables']:
+        for var in skeleton['variables']:
             if var not in arc:
-                arc[var] = sktfile.skeleton['variables'][var]
+                arc[var] = skeleton['variables'][var]
 
         # Fill in global attributes
         required = attributes['global']['required'].keys()
@@ -428,8 +432,8 @@ def autofill(arc, skt):
             for attr in required:
                 try:
                     if attr not in arc.attributes:
-                        if attr in sktfile.skeleton['attributes']['global']:
-                            arc.attributes[attr] = sktfile.skeleton['attributes']['global'][attr]
+                        if attr in skeleton['attributes']['global']:
+                            arc.attributes[attr] = skeleton['attributes']['global'][attr]
                         else:
                             attributes['global']['required'][attr](arc, attr)
                     if attr not in arc.attributes:
@@ -460,10 +464,10 @@ def autofill(arc, skt):
                 for attr in required:
                     try:
                         if attr not in arc[var].attributes:
-                            if var in sktfile.skeleton['attributes']['variable'] \
-                              and attr in sktfile.skeleton['attributes']['variable'][var]:
+                            if var in skeleton['attributes']['variable'] \
+                              and attr in skeleton['attributes']['variable'][var]:
                                 arc[var].attributes[attr] \
-                                  = sktfile.skeleton['attributes']['variable'][var][attr]
+                                  = skeleton['attributes']['variable'][var][attr]
                             else:
                                 attributes['var']['required'][attr](
                                   arc, attr, var)
@@ -523,6 +527,8 @@ class archive(cdf.archive):
         if 'skeleton' in kwargs:
             self._skeleton = kwargs['skeleton']
             del kwargs['skeleton']
+        else:
+            self._skeleton = None
         cdf.archive.__init__(self, *args, **kwargs)
     def _save(self):
         autofill(self, self._skeleton)
