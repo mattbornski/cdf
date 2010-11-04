@@ -1222,14 +1222,11 @@ PyObject *tokenFormat_x_L(long one, long two, PyObject *tokens,
     long (*helper)(PyObject *)) {
     if (helper != NULL) {
         long len = helper(tokens);
-        long *out_1 = alloc(calloc(sizeof(long), len));
+        void *out_1 = alloc(calloc(sizeof(long), len));
         if ((out_1 != NULL) || (len == 0)) {
             if (check(CDFlib(one, two, out_1, NULL_))) {
                 /* Convert long array list into Python list. */
-                /* TODO Must specify that the original values are of
-                   type "long" and we'd like them to be of type
-                   CDF_INT4. */
-                PyObject *conv_1 = ownedPythonListFromArray((void *)out_1, len, CDF_INT4);
+                PyObject *conv_1 = ownedPythonListFromArrayOfLongs(out_1, len);
                 free(out_1);
                 return Py_BuildValue("(O)", conv_1);
             }
@@ -1326,14 +1323,13 @@ PyObject *tokenFormat_x_lL(long one, long two, PyObject *tokens,
     if (helper != NULL) {
         long len = helper(tokens);
         if (len > 0) {
-            long *out_2 = alloc(calloc(sizeof(long), len));
+            void *out_2 = alloc(calloc(sizeof(long), len));
             if (out_2 != NULL) {
                 long out_1;
                 if (check(CDFlib(one, two, &out_1, out_2, NULL_))) {
                     /* Convert long array list into Python list. */
-                    /* TODO see tokenFormat_x_L */
-                    PyObject *conv_2 = ownedPythonListFromArray(
-                      (void *)out_2, len, CDF_INT4);
+                    PyObject *conv_2 = ownedPythonListFromArrayOfLongs(
+                      out_2, len);
                     free(out_2);
                     return Py_BuildValue("(lO)", out_1, conv_2);
                 }
@@ -1769,6 +1765,29 @@ allocatedArrayFromOwnedPythonSequence(PyObject *sequence) {
 }
 
 PyObject *
+ownedPythonListFromArrayOfLongs(void *array, long len) {
+    /* We want to select the proper CDF type based on our knowledge
+     * that we're dealing with C longs here. */
+    long type = -1;
+    switch (sizeof(long)) {
+        case 1:
+            type = CDF_INT1;
+            break;
+        case 2:
+            type = CDF_INT2;
+            break;
+        case 4:
+            type = CDF_INT4;
+            break;
+    }
+    if (type >= 0) {
+        return ownedPythonListFromArray(array, len, type);
+    } else {
+        return NULL;
+    }
+}
+
+PyObject *
 ownedPythonListFromArray(void *array, long len, long type) {
     if ((array != NULL) || (len == 0)) {
         long size = getSize(type);
@@ -1859,7 +1878,8 @@ ownedPythonListOfListsFromArray(void **array, long *dims, long n_dims, long type
             if (list != NULL) {
                 for (i = 0; i < dims[0]; i++) {
                     tmp = ownedPythonListOfListsFromArray(
-                        (void *)(&(array[i])), (long *)(&(dims[1])), (n_dims - 1), type);
+                      (void *)(&(array[i])),
+                      (long *)(&(dims[1])), (n_dims - 1), type);
                     if (tmp != NULL) {
                         PyList_SetItem(list, i, tmp);
                     } else {
