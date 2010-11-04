@@ -1071,32 +1071,36 @@ void **allocateHyperDataStorage(int z, long **dims, long *n_dims, long type) {
     long stringDimension = ((majority == ROW_MAJOR) ? 0 : *n_dims);
     *n_dims += ((type == CDF_CHAR) ? 1 : 0);
     *dims = alloc(calloc(sizeof(long), *n_dims));
-    long size = getSize(type);
-    if (records > 1) {
-        *dims[recordDimension] = records;
-        dimensionOffset += (recordDimension == dimensionOffset);
-    }
-    if (type == CDF_CHAR) {
-        *dims[stringDimension] = 1;
-        size *= getNumber(z);
-        dimensionOffset += (stringDimension == dimensionOffset);
-    }
-    if (dimensionCount > 0) {
-        long *lengths = longsFromTwoTokens(
-          GET_, (z ? zVAR_DIMSIZES_ : rVARs_DIMSIZES_));
-        long i = 0;
-        for (i = 0; i < dimensionCount; i++) {
-            long index;
-            if (majority != ROW_MAJOR) {
-                index = i + 1 + dimensionOffset;
-            } else {
-                index = dimensionCount - i - 1 + dimensionOffset;
-            }
-            ((long *)*dims)[index] = lengths[i];
+    if (dims != NULL) {
+        long size = getSize(type);
+        if (records > 1) {
+            *dims[recordDimension] = records;
+            dimensionOffset += (recordDimension == dimensionOffset);
         }
-        free(lengths);
+        if (type == CDF_CHAR) {
+            *dims[stringDimension] = 1;
+            size *= getNumber(z);
+            dimensionOffset += (stringDimension == dimensionOffset);
+        }
+        if (dimensionCount > 0) {
+            long *lengths = longsFromTwoTokens(
+              GET_, (z ? zVAR_DIMSIZES_ : rVARs_DIMSIZES_));
+            long i = 0;
+            for (i = 0; i < dimensionCount; i++) {
+                long index;
+                if (majority != ROW_MAJOR) {
+                    index = i + 1 + dimensionOffset;
+                } else {
+                    index = dimensionCount - i - 1 + dimensionOffset;
+                }
+                ((long *)*dims)[index] = lengths[i];
+            }
+            free(lengths);
+        }
+        return multiDimensionalArray(*dims, *n_dims, size);
+    } else {
+        return NULL;
     }
-    return multiDimensionalArray(*dims, *n_dims, size);
 }
 
 /* Get zVAR hyperdata */
@@ -1222,6 +1226,9 @@ PyObject *tokenFormat_x_L(long one, long two, PyObject *tokens,
         if ((out_1 != NULL) || (len == 0)) {
             if (check(CDFlib(one, two, out_1, NULL_))) {
                 /* Convert long array list into Python list. */
+                /* TODO Must specify that the original values are of
+                   type "long" and we'd like them to be of type
+                   CDF_INT4. */
                 PyObject *conv_1 = ownedPythonListFromArray((void *)out_1, len, CDF_INT4);
                 free(out_1);
                 return Py_BuildValue("(O)", conv_1);
@@ -1324,6 +1331,7 @@ PyObject *tokenFormat_x_lL(long one, long two, PyObject *tokens,
                 long out_1;
                 if (check(CDFlib(one, two, &out_1, out_2, NULL_))) {
                     /* Convert long array list into Python list. */
+                    /* TODO see tokenFormat_x_L */
                     PyObject *conv_2 = ownedPythonListFromArray(
                       (void *)out_2, len, CDF_INT4);
                     free(out_2);
