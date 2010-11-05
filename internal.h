@@ -362,8 +362,9 @@ DECLARE_CONSTANT(CDFwithSTATS_)
  * Declare functions.
  **/
 long *allocatedArrayFromOwnedPythonSequence(PyObject *list);
+PyObject *ownedPythonListFromArray(void *array, long len, long cdf_type, long size);
 PyObject *ownedPythonListFromArrayOfLongs(void *array, long len);
-PyObject *ownedPythonListFromArray(void *array, long len, long type);
+PyObject *ownedPythonListFromArrayOfCdfData(void *array, long len, long cdf_type);
 void **multiDimensionalArray(long *dims, long count, long size);
 void cleanupMultiDimensionalArray(void **array, long *dims, long count);
 PyObject *ownedPythonListOfListsFromArray(void **array, long *dims, long count, long type);

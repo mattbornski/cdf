@@ -1117,7 +1117,7 @@ PyObject *getHyperData(int z, long one, long two) {
                 // of arrays within arrays.
                 PyObject *conv_1 = NULL;
                 if (n_dims == 0) {
-                    conv_1 = ownedPythonListFromArray(NULL, 0, type);
+                    conv_1 = ownedPythonListFromArrayOfCdfData(NULL, 0, type);
                     PyList_Append(conv_1, castFromCdfToPython(type, out_1));
                 } else {
                     conv_1 = ownedPythonListOfListsFromArray(
@@ -1283,7 +1283,7 @@ PyObject *tokenFormat_x_V(long one, long two, PyObject *tokens,
                     if (check(CDFlib(one, two, out_1, NULL_))) {
                         /* Convert array into Python list. */
                         PyObject *conv_1
-                          = ownedPythonListFromArray(out_1, len, type);
+                          = ownedPythonListFromArrayOfCdfData(out_1, len, type);
                         free(out_1);
                         return Py_BuildValue("(O)", conv_1);
                     }
@@ -1768,29 +1768,32 @@ PyObject *
 ownedPythonListFromArrayOfLongs(void *array, long len) {
     /* We want to select the proper CDF type based on our knowledge
      * that we're dealing with C longs here. */
-    long type = -1;
-    switch (sizeof(long)) {
+    long type = 4;
+    long size = sizeof(long);
+    switch (size) {
         case 1:
             type = CDF_INT1;
             break;
         case 2:
             type = CDF_INT2;
             break;
-        case 4:
-            type = CDF_INT4;
-            break;
     }
     if (type >= 0) {
-        return ownedPythonListFromArray(array, len, type);
+        return ownedPythonListFromArray(array, len, type, size);
     } else {
         return NULL;
     }
 }
 
 PyObject *
-ownedPythonListFromArray(void *array, long len, long type) {
+ownedPythonListFromArrayOfCdfData(void *array, long len, long cdf_type) {
+    return ownedPythonListFromArray(array, len, cdf_type, getSize(cdf_type));
+}
+
+PyObject *
+ownedPythonListFromArray(
+  void *array, long len, long cdf_type, long size) {
     if ((array != NULL) || (len == 0)) {
-        long size = getSize(type);
         long i;
         PyObject *list = PyList_New(len);
         if (list == NULL) {
@@ -1798,7 +1801,8 @@ ownedPythonListFromArray(void *array, long len, long type) {
             return NULL;
         }
         for (i = 0; i < len; i++) {
-            PyObject *value = castFromCdfToPython(type, array + (i * size));
+            PyObject *value = castFromCdfToPython(
+              cdf_type, array + (i * size));
             if (value != NULL) {
                 PyList_SetItem(list, i, value);
             } else {
@@ -1893,7 +1897,7 @@ ownedPythonListOfListsFromArray(void **array, long *dims, long n_dims, long type
                 return NULL;
             }
         } else {
-            return ownedPythonListFromArray((void *)array, dims[0], type);
+            return ownedPythonListFromArrayOfCdfData((void *)array, dims[0], type);
         }
     }
     printf("Not enough information to generate new Python list.\n");
