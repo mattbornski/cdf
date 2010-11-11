@@ -47,7 +47,7 @@ if __name__ == '__main__':
     # with copyright law.
     cdf33_distribution_sources = glob.glob(
       os.path.join('cdf33-dist',
-        os.path.join('src', os.path.join('lib', '*.c'))))
+        os.path.join('src', os.path.join('lib', '*.[c|h]'))))
     cdf33_distribution_sources.remove(
       os.path.join('cdf33-dist',
         os.path.join('src', os.path.join('lib', 'libmain.c'))))
@@ -58,7 +58,7 @@ if __name__ == '__main__':
       'cdf.internal',
       sources = [
         # The core code for the Python extension
-        'internal.c'] \
+        'internal.c', 'internal.h'] \
         # The unadulterated source code from the CDF distribution.
         # While the Python extension itself is not part of the CDF
         # distribution, it incorporates significant portions of the
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     # on this system.
     setuptools.setup(
       name = 'CDF',
-      version = '0.31',
+      version = '0.32',
       description = 'This package handles files in NASA Common Data Format',
       author = 'Matt Born',
       author_email = 'mattborn@ssl.berkeley.edu',
