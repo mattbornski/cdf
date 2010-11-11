@@ -47,7 +47,7 @@ if __name__ == '__main__':
     # with copyright law.
     cdf33_distribution_sources = glob.glob(
       os.path.join('cdf33-dist',
-        os.path.join('src', os.path.join('lib', '*.[c|h]'))))
+        os.path.join('src', os.path.join('lib', '*.c'))))
     cdf33_distribution_sources.remove(
       os.path.join('cdf33-dist',
         os.path.join('src', os.path.join('lib', 'libmain.c'))))
@@ -58,7 +58,7 @@ if __name__ == '__main__':
       'cdf.internal',
       sources = [
         # The core code for the Python extension
-        'internal.c', 'internal.h'] \
+        'internal.c'] \
         # The unadulterated source code from the CDF distribution.
         # While the Python extension itself is not part of the CDF
         # distribution, it incorporates significant portions of the
