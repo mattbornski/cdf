@@ -19,6 +19,6 @@ pushd $BASE
 # diffval .
 
 # Upload package and documentation.
-python setup.py bdist_egg bdist sdist upload build_sphinx upload_sphinx
+python setup.py bdist_egg sdist upload build_sphinx upload_sphinx
 
 popd
