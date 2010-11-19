@@ -1,6 +1,7 @@
 # Stock python modules
 import copy
 import os
+import tempfile
 import threading
 import time
 import weakref
@@ -17,6 +18,12 @@ from . import typing
 # The underlying CDF library is not thread-safe.  Make our layer thread
 # safe by requiring you to acquire 
 _selection_lock = threading.RLock()
+
+# Set the CDF_TMP environment variable, if not already set.  This will
+# guide the toolkit's creation of temporary files, which are often used
+# to compress or decompress variables.
+if not 'CDF_TMP' in os.environ:
+    os.environ['CDF_TMP'] = tempfile.gettempdir()
 
 # Closure to ensure proper selection of CDF files.
 class _selection(object):
