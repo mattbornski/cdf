@@ -1,4 +1,20 @@
+DEPRECATED
+==========
+
+This package has not been maintained for going on 15 years.
+
+You probably aren't using it.
+
+If you are, you shouldn't; there are many alternatives now which are actively maintained by people who are still engaged in space science.
+
+I am currently browning out the package by unpublishing it from PyPI in order to relinquish the name to another project.  If this breaks your setup, let me know loudly and promptly.
+
+
+
+
+
 CDF: A Python package which handles files in NASA Common Data Format.
+---------------------------------------------------------------------
 
 Large portions of this package are sourced directly and unmodified from the CDF software released at http://cdf.gsfc.nasa.gov/.  In particular, all files under the cdf*-dist trees are intended to be the verbatim, complete, and unmodified set of files obtained from the NASA/GSFC sources.  The following license applies to these portions:
    Copyright 2009

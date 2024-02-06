@@ -108,9 +108,9 @@ if __name__ == '__main__':
       name = 'CDF',
       version = '0.32',
       description = 'This package handles files in NASA Common Data Format',
-      author = 'Matt Born',
-      author_email = 'mtborn@gmail.com',
-      url = 'https://github.com/mattborn/cdf',
+      author = 'Matt Bornski',
+      author_email = 'matt@bornski.com',
+      url = 'https://github.com/mattbornski/cdf',
       classifiers = [
         'Development Status :: 4 - Beta', 
         'Intended Audience :: Science/Research',
